@@ -14,12 +14,12 @@ export const moduleConfigs = {
       { key: 'references', label: 'References' },
     ],
     fields: [
-      { name: 'customer_name', label: 'Full Name', required: true },
-      { name: 'cnic_no', label: 'CNIC', required: true },
-      { name: 'phone_no', label: 'Phone', required: true },
+      { name: 'customer_name', label: 'Full Name', required: true, type: 'text' , maxLength: 20},
+      { name: 'cnic_no', label: 'CNIC', required: true, type: 'number' , maxLength: 13},
+      { name: 'phone_no', label: 'Phone', required: true, type: 'number' , maxLength: 11},
       { name: 'address', label: 'Address', type: 'textarea' },
       { name: 'profession', label: 'Profession', type: 'select', options: ['Driver', 'Passenger', 'Other'] },
-      { name: 'balance', label: 'Balance', type: 'number' },
+      { name: 'balance', label: 'Balance', type: 'number', defaultValue: 0 },
       { name: 'status', label: 'Status', type: 'select', options: ['active', 'inactive'], defaultValue: 'active' },
     ],
     columns: [
@@ -39,22 +39,26 @@ export const moduleConfigs = {
     tabs: [
       { key: 'list', label: 'List' },
       { key: 'form', label: 'Form' },
-      { key: 'images', label: 'Images' },
       { key: 'documents', label: 'Documents' },
     ],
     fields: [
-      { name: 'registration_no', label: 'Registration No', required: true },
+      { name: 'registration_no', label: 'Registration No', required: true, type: 'text' , maxLength: 10},
+      
       { name: 'car_make', label: 'Make', required: true },
-      { name: 'car_model', label: 'Model', required: true },
+      { name: 'car_model', label: 'Model', required: true, type: 'text' , maxLength: 20},
       { name: 'year_of_model', label: 'Year', type: 'number' },
       { name: 'car_type', label: 'Vehicle Type', type: 'select', options: ['Sedan', 'SUV', 'APV', 'Hatchback', 'Luxury'] },
-      { name: 'rate_per_day', label: 'Rate / Day', type: 'number', required: true },
+      { name: 'rate_per_day', label: 'Rate / Day', type: 'number', required: true, defaultValue: 0 },
       { name: 'transmission_type', label: 'Transmission', type: 'select', options: ['Automatic', 'Manual'] },
       { name: 'fuel_type', label: 'Fuel Type', type: 'select', options: ['Petrol', 'Diesel', 'Hybrid', 'Electric'] },
       { name: 'location', label: 'Location' },
       { name: 'status', label: 'Status', type: 'select', options: ['available', 'on_rent', 'maintenance', 'inactive'], defaultValue: 'available' },
       { name: 'air_conditioner', label: 'Air Conditioner', type: 'checkbox', defaultValue: true },
       { name: 'android', label: 'Android Panel', type: 'checkbox' },
+      { name: 'sunroof', label: 'Sun Roof', type: 'checkbox' },
+      { name: 'front_camera', label: 'Front Camera', type: 'checkbox' },
+      { name: 'rear_camera', label: 'Rear Camera', type: 'checkbox' },
+      
     ],
     columns: [
       { key: 'registration_no', label: 'Registration' },
@@ -64,8 +68,68 @@ export const moduleConfigs = {
       { key: 'location', label: 'Location' },
       { key: 'status', label: 'Status', type: 'status' },
     ],
-    filters: [{ key: 'status', label: 'Status', options: ['', 'available', 'on_rent', 'maintenance', 'inactive'] }],
+    filters: [
+      { key: 'status', label: 'Status', options: [
+        { value: '', label: 'All Status' },
+        { value: 'available', label: 'Available' },
+        { value: 'on_rent', label: 'On Rent' },
+        { value: 'maintenance', label: 'Maintenance' },
+        { value: 'inactive', label: 'Inactive' }
+      ] },
+      { key: 'car_type', label: 'Vehicle Type', options: [
+        { value: '', label: 'All Types' },
+        { value: 'Sedan', label: 'Sedan' },
+        { value: 'SUV', label: 'SUV' },
+        { value: 'APV', label: 'APV' },
+        { value: 'Hatchback', label: 'Hatchback' },
+        { value: 'Luxury', label: 'Luxury' }
+      ] },
+      { key: 'fuel_type', label: 'Fuel Type', options: [
+        { value: '', label: 'All Fuels' },
+        { value: 'Petrol', label: 'Petrol' },
+        { value: 'Diesel', label: 'Diesel' },
+        { value: 'Hybrid', label: 'Hybrid' },
+        { value: 'Electric', label: 'Electric' }
+      ] }
+    ],
   },
+owners: {
+  title: 'Owners',
+  endpoint: '/owners',
+  tabs: [
+    { key: 'list', label: 'List' },
+    { key: 'form', label: 'Form' },
+    { key: 'documents', label: 'Documents' },
+    {key:  "earning", label : "Earning & History"}
+  ],
+  fields: [
+    { name: 'owner_name', label: 'Owner Name', required: true, type: 'text' },
+    { name: 'father_name', label: 'Father Name', type: 'text' },
+    { name: 'cnic_no', label: 'CNIC Number', type: 'text', maxLength: 14 },
+    { name: 'phone_no', label: 'Phone Number', required: true, type: 'number' },
+    { name: 'alternate_phone', label: 'Alternate Phone', type: 'tel' },
+    { name: 'address', label: 'Address', type: 'textarea' },
+    { name: 'city', label: 'City', type: 'text' },
+    { name: 'notes', label: 'Notes', type: 'textarea' },
+    { name: 'status', label: 'Status', type: 'select', options: ['active', 'inactive'], defaultValue: 'active' },
+  ],
+  columns: [
+    { key: 'owner_name', label: 'Owner Name' },
+    { key: 'phone_no', label: 'Phone' },
+    { key: 'cnic_no', label: 'CNIC' },
+    { key: 'city', label: 'City' },
+    { key: 'status', label: 'Status', type: 'status' },
+  ],
+  filters: [
+    { key: 'status', label: 'Status', options: [
+      { value: '', label: 'All Status' },
+      { value: 'active', label: 'Active' },
+      { value: 'inactive', label: 'Inactive' }
+    ] }
+  ],
+},
+
+
   setup: {
     title: 'Setup Modules',
     endpoint: '/setup',
@@ -263,29 +327,7 @@ export const moduleConfigs = {
     ],
     filters: [{ key: 'status', label: 'Status', options: ['', 'pending', 'completed', 'overdue'] }],
   },
-  owners: {
-    title: 'Owners',
-    endpoint: '/owners',
-    tabs: [
-      { key: 'list', label: 'List' },
-      { key: 'form', label: 'Form' },
-    ],
-    fields: [
-      { name: 'owner_name', label: 'Owner Name', required: true },
-      { name: 'phone', label: 'Phone', required: true },
-      { name: 'email', label: 'Email', type: 'email' },
-      { name: 'address', label: 'Address', type: 'textarea' },
-      { name: 'profit_share_percent', label: 'Profit Share %', type: 'number' },
-      { name: 'status', label: 'Status', type: 'select', options: ['active', 'inactive'], defaultValue: 'active' },
-    ],
-    columns: [
-      { key: 'owner_name', label: 'Owner' },
-      { key: 'phone', label: 'Phone' },
-      { key: 'email', label: 'Email' },
-      { key: 'profit_share_percent', label: 'Share %' },
-      { key: 'status', label: 'Status', type: 'status' },
-    ],
-  },
+  
   'owner-earnings': {
     title: 'Owner Earnings',
     endpoint: '/owner-earnings',

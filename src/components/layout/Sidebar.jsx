@@ -5,6 +5,8 @@ import { classNames } from '../../utils/helpers';
 const navigation = [
   { label: 'Dashboard', to: '/', icon: LayoutDashboard },
   { label: 'Customers', to: '/customers', icon: Users },
+  { label: 'Owners', to: '/owners', icon: ShieldUser },
+  { label: 'Owner Earnings', to: '/owner-earnings', icon: HandCoins },
   { label: 'Vehicles', to: '/vehicles', icon: CarFront },
   { label: 'Setup', to: '/setup', icon: Settings2 },
   { label: 'Bookings', to: '/bookings', icon: ClipboardList },
@@ -14,8 +16,6 @@ const navigation = [
   { label: 'Cash Receipts', to: '/cash-receipts', icon: CreditCard },
   { label: 'Expenses', to: '/expenses', icon: CreditCard },
   { label: 'Maintenance', to: '/maintenance', icon: Wrench },
-  { label: 'Owners', to: '/owners', icon: ShieldUser },
-  { label: 'Owner Earnings', to: '/owner-earnings', icon: HandCoins },
   { label: 'Reports', to: '/reports', icon: ChartColumnBig },
   { label: 'Daybook', to: '/daybook', icon: ChartColumnBig },
 ];

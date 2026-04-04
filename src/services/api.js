@@ -41,11 +41,51 @@ export const authApi = {
 };
 
 export const moduleApi = {
-  getAll: (endpoint, params) => api.get(endpoint, { params }),
+  getAll: async (endpoint, params = {}) => {
+    // Build query string from params
+    const queryParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        queryParams.append(key, params[key]);
+      }
+    });
+    
+    const url = queryParams.toString() 
+      ? `${endpoint}?${queryParams.toString()}`
+      : endpoint;
+    
+    return await api.get(url); // Assuming you have an api instance
+  },
+
   getOne: (endpoint, id) => api.get(`${endpoint}/${id}`),
-  create: (endpoint, data) => api.post(endpoint, data),
+  create: async (endpoint, data) => {
+    // If data is FormData, send as multipart/form-data
+    if (data instanceof FormData) {
+      return await api.post(endpoint, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+    // Otherwise send as JSON
+    return await api.post(endpoint, data);
+  },
+  getById: async (endpoint, id) => {
+    return await api.get(`${endpoint}/${id}`);
+  },
   update: (endpoint, id, data) => api.put(`${endpoint}/${id}`, data),
-  patch: (endpoint, id, data) => api.patch(`${endpoint}/${id}`, data),
+  patch: async (endpoint, id, data) => {
+    // If data is FormData, send as multipart/form-data
+    if (data instanceof FormData) {
+      return await api.put(`${endpoint}/${id}`, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+    // Otherwise send as JSON
+    return await api.put(`${endpoint}/${id}`, data);
+  },
   remove: (endpoint, id) => api.delete(`${endpoint}/${id}`),
 };
 
