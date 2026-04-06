@@ -1,3 +1,4 @@
+// frontend/src/pages/ModulePage.jsx
 import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Plus } from 'lucide-react';
@@ -14,15 +15,13 @@ import { moduleApi } from '../services/api';
 import CustomerDocumentsSection from '../components/upload/CustomerDocumentsSection';
 import CustomerReferencesSection from '../components/upload/CustomerReferencesSection';
 import VehicleListView from '../components/vehicles/VehicleListView';
-// In ModulePage.jsx, add import
 import VehicleImageGallery from '../components/vehicles/VehicleImageGallery';
 import VehicleForm from '../components/vehicles/VehicleForm';
 import VehicleDocumentsManager from '../components/vehicles/documents/VehicleDocumentsManager';
 import OwnerDocumentsManager from '../components/owners/OwnerDocumentsManager';
+import OwnerEarningsManager from '../components/owners/onwer-earning/OwnerEarningsManager';
+import SetupManager from '../components/setup/SetupManager';
 
-
-
-// Add this function to build filter options
 function buildFilters(config, filterValues) {
   return (config.filters || []).map((filter) => ({
     key: filter.key,
@@ -31,13 +30,44 @@ function buildFilters(config, filterValues) {
   }));
 }
 
-
 function PlaceholderContent({ title }) {
   return <EmptyState title={`${title} section`} description="Connect this tab with your dedicated API endpoint to populate records, files, or related references." />;
 }
 
 export default function ModulePage({ moduleKey }) {
   const config = moduleConfigs[moduleKey];
+  
+  // For setup module, use special handling
+  if (moduleKey === 'setup') {
+    const [selectedSetupType, setSelectedSetupType] = useState(config.setupTypes[0]?.key);
+    
+    return (
+      <div className="space-y-5">
+        <div className="flex flex-col gap-3">
+          <TabComponent 
+            tabs={config.tabs} 
+            activeTab={selectedSetupType} 
+            onChange={setSelectedSetupType} 
+          />
+        </div>
+        <div className="animate-in fade-in-50 duration-300">
+          {selectedSetupType && (
+            <SetupManager 
+              setupType={selectedSetupType} 
+              key={selectedSetupType}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+  
+  // For non-setup modules, use regular handling
+  return <RegularModulePage moduleKey={moduleKey} config={config} />;
+}
+
+// Regular module page component
+function RegularModulePage({ moduleKey, config }) {
   const defaultTab = config.tabs[0]?.key || 'list';
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -46,16 +76,15 @@ export default function ModulePage({ moduleKey }) {
   const [filterValues, setFilterValues] = useState({});
   const debouncedSearch = useDebounce(search, 500);
   const [selectedOwner, setSelectedOwner] = useState(null);
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
 
-  // In ModulePage.jsx, update the queryParams useMemo
   const queryParams = useMemo(() => {
     const params = {
       page,
       limit: 10,
-      search: debouncedSearch || undefined  // Only include if has value
+      search: debouncedSearch || undefined
     };
 
-    // Add filters to query params
     Object.keys(filterValues).forEach(key => {
       if (filterValues[key] && filterValues[key] !== '') {
         params[key] = filterValues[key];
@@ -76,12 +105,12 @@ export default function ModulePage({ moduleKey }) {
     if (moduleKey === 'owners') {
       setSelectedOwner(record);
     }
+    if (moduleKey === 'vehicles') {
+      setSelectedVehicle(record);
+    }
     setEditingRecord(record);
     setActiveTab(config.tabs.find((tab) => tab.key === 'form')?.key || defaultTab);
   };
-
-
-
 
   const handleDelete = async (record) => {
     if (!record?.id) return;
@@ -100,9 +129,7 @@ export default function ModulePage({ moduleKey }) {
     setActiveTab(config.tabs.find((tab) => tab.key === 'list')?.key || defaultTab);
   };
 
-
   const tableTitle = activeTab === 'history' ? `${config.title} History` : `${config.title} List`;
-
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -117,11 +144,10 @@ export default function ModulePage({ moduleKey }) {
             />
           );
         }
-
         return <GenericForm config={config} editingRecord={editingRecord} onSuccess={handleSuccess} onCancelEdit={() => setEditingRecord(null)} />;
+      
       case 'list':
       case 'history':
-        // Special handling for vehicles to use card/grid view
         if (moduleKey === 'vehicles') {
           const filters = buildFilters(config, filterValues);
           return (
@@ -149,7 +175,10 @@ export default function ModulePage({ moduleKey }) {
           );
         }
 
-        // Default table view for other modules
+        if (moduleKey === 'owner-earnings') {
+          return <OwnerEarningsManager />;
+        }
+
         return (
           <DataTable
             title={tableTitle}
@@ -171,25 +200,22 @@ export default function ModulePage({ moduleKey }) {
             limit={meta.limit}
             onPageChange={setPage}
             actions={Boolean(config.fields.length || config.columns.length)}
-
           />
         );
-      // In renderTabContent function, add the images case:
+      
       case 'images':
-        // For vehicles, show image gallery with selected vehicle
         if (moduleKey === 'vehicles') {
-          // You'll need to pass the selected vehicle from state
-          // Add this state at the top of ModulePage component
-          // const [selectedVehicle, setSelectedVehicle] = useState(null);
           return <VehicleImageGallery vehicle={selectedVehicle || data?.[0]} />;
         }
         return <PlaceholderContent title={activeTab} />;
+      
       case 'report':
       case 'summary':
       case 'profit-loss':
       case 'daybook':
       case 'due':
         return <ReportSection title={config.title} />;
+      
       case 'documents':
         if (moduleKey === 'vehicles') {
           return <VehicleDocumentsManager />;
@@ -198,10 +224,10 @@ export default function ModulePage({ moduleKey }) {
           return <OwnerDocumentsManager onUpdate={refetch} />;
         }
         return <CustomerDocumentsSection />;
+      
       case 'references':
         return <CustomerReferencesSection />;
-      case 'images':
-        return <PlaceholderContent title={activeTab} />;
+      
       default:
         return <TimelineSection title={`${config.title} Timeline`} />;
     }
@@ -211,11 +237,11 @@ export default function ModulePage({ moduleKey }) {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <TabComponent tabs={config.tabs} activeTab={activeTab} onChange={setActiveTab} />
-        {config.fields.length && activeTab !== 'form' ? (
+        {config.fields.length && activeTab !== 'form' && moduleKey !== 'owner-earnings' ? (
           <button
             type="button"
             onClick={handleAddNew}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
           >
             <Plus size={16} /> Add New
           </button>

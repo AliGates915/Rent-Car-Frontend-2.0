@@ -43,7 +43,7 @@ export const moduleConfigs = {
     ],
     fields: [
       { name: 'registration_no', label: 'Registration No', required: true, type: 'text' , maxLength: 10},
-      
+      {name: 'owner_id', label : 'owner_id',  type: 'select'},
       { name: 'car_make', label: 'Make', required: true },
       { name: 'car_model', label: 'Model', required: true, type: 'text' , maxLength: 20},
       { name: 'year_of_model', label: 'Year', type: 'number' },
@@ -100,7 +100,6 @@ owners: {
     { key: 'list', label: 'List' },
     { key: 'form', label: 'Form' },
     { key: 'documents', label: 'Documents' },
-    {key:  "earning", label : "Earning & History"}
   ],
   fields: [
     { name: 'owner_name', label: 'Owner Name', required: true, type: 'text' },
@@ -130,27 +129,25 @@ owners: {
 },
 
 
-  setup: {
-    title: 'Setup Modules',
-    endpoint: '/setup',
-    tabs: [
-      { key: 'list', label: 'List' },
-      { key: 'form', label: 'Form' },
-    ],
-    fields: [
-      { name: 'module_type', label: 'Setup Type', type: 'select', required: true, options: ['vehicle_type', 'maintenance_type', 'rent_type', 'accessory_type'] },
-      { name: 'name', label: 'Name', required: true },
-      { name: 'description', label: 'Description', type: 'textarea' },
-      { name: 'status', label: 'Status', type: 'select', options: ['active', 'inactive'], defaultValue: 'active' },
-    ],
-    columns: [
-      { key: 'module_type', label: 'Type' },
-      { key: 'name', label: 'Name' },
-      { key: 'description', label: 'Description' },
-      { key: 'status', label: 'Status', type: 'status' },
-    ],
-    filters: [{ key: 'module_type', label: 'Type', options: ['', 'vehicle_type', 'maintenance_type', 'rent_type', 'accessory_type'] }],
-  },
+setup: {
+  title: 'Setup Modules',
+  endpoint: '/setup',
+  isMultiType: true,
+  setupTypes: [
+    { key: 'vehicle-type', label: 'Vehicle Types', endpoint: '/vehicle-types' },
+    { key: 'maintenance-type', label: 'Maintenance Types', endpoint: '/maintenance-types' },
+    { key: 'rent-type', label: 'Rent Types', endpoint: '/rent-types' },
+    { key: 'accessory-type', label: 'Accessory Types', endpoint: '/accessory-types' }
+  ],
+  tabs: [
+    { key: 'vehicle-type', label: 'Vehicle Types' },
+    { key: 'maintenance-type', label: 'Maintenance Types' },
+    { key: 'rent-type', label: 'Rent Types' },
+    { key: 'accessory-type', label: 'Accessory Types' }
+  ]
+},
+
+
   bookings: {
     title: 'Booking Management',
     endpoint: '/bookings',
@@ -332,20 +329,23 @@ owners: {
     title: 'Owner Earnings',
     endpoint: '/owner-earnings',
     tabs: [
-      { key: 'list', label: 'List' },
-      { key: 'summary', label: 'Summary' },
-      { key: 'due', label: 'Due Payments' },
+      // { key: 'list', label: 'All Earnings' },
+      // { key: 'summary', label: 'Summary' },
+      // { key: 'due', label: 'Due Payments' },
     ],
-    fields: [],
+    fields: [], // No form fields as earnings are auto-generated from bookings
     columns: [
+      { key: 'id', label: 'ID' },
       { key: 'owner_name', label: 'Owner' },
-      { key: 'vehicle_id', label: 'Vehicle ID' },
-      { key: 'earned_amount', label: 'Earned', type: 'currency' },
-      { key: 'paid_amount', label: 'Paid', type: 'currency' },
-      { key: 'due_amount', label: 'Due', type: 'currency' },
+      { key: 'registration_no', label: 'Vehicle Reg' },
+      { key: 'booking_code', label: 'Booking Code' },
+      { key: 'booking_amount', label: 'Booking Amount', type: 'currency' },
+      { key: 'owner_percentage', label: 'Owner %', type: 'percentage' },
+      { key: 'owner_amount', label: 'Owner Amount', type: 'currency' },
       { key: 'status', label: 'Status', type: 'status' },
     ],
   },
+  
   reports: {
     title: 'Reports',
     endpoint: '/reports',
@@ -404,3 +404,65 @@ export const dashboardSummaryCards = [
   { label: 'Today Cash In', value: 'PKR 430K', change: '+8.2%' },
   { label: 'Pending Returns', value: '11', change: '-2.3%' },
 ];
+
+
+// Individual setup type configurations
+export const setupTypeConfigs = {
+  'vehicle-type': {
+    title: 'Vehicle Types',
+    endpoint: '/vehicle-types',
+    columns: [
+      { key: 'name', label: 'Name' },
+      { key: 'description', label: 'Description' },
+      { key: 'status', label: 'Status', type: 'status' }
+    ],
+    fields: [
+      { name: 'name', label: 'Name', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'status', label: 'Status', type: 'select', options: ['active', 'inactive'], defaultValue: 'active' }
+    ]
+  },
+  'maintenance-type': {
+    title: 'Maintenance Types',
+    endpoint: '/maintenance-types',
+    columns: [
+      { key: 'name', label: 'Name' },
+      { key: 'description', label: 'Description' },
+      { key: 'status', label: 'Status', type: 'status' }
+    ],
+    fields: [
+      { name: 'name', label: 'Name', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'status', label: 'Status', type: 'select', options: ['active', 'inactive'], defaultValue: 'active' }
+    ]
+  },
+  'rent-type': {
+    title: 'Rent Types',
+    endpoint: '/rent-types',
+    columns: [
+      { key: 'name', label: 'Name' },
+      { key: 'description', label: 'Description' },
+      { key: 'status', label: 'Status', type: 'status' }
+    ],
+    fields: [
+      { name: 'name', label: 'Name', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'status', label: 'Status', type: 'select', options: ['active', 'inactive'], defaultValue: 'active' }
+    ]
+  },
+  'accessory-type': {
+    title: 'Accessory Types',
+    endpoint: '/accessory-types',
+    columns: [
+      { key: 'name', label: 'Name' },
+      { key: 'description', label: 'Description' },
+      { key: 'status', label: 'Status', type: 'status' }
+    ],
+    fields: [
+      { name: 'name', label: 'Name', required: true },
+      { name: 'description', label: 'Description', type: 'textarea' },
+      { name: 'status', label: 'Status', type: 'select', options: ['active', 'inactive'], defaultValue: 'active' }
+    ]
+  }
+};
+

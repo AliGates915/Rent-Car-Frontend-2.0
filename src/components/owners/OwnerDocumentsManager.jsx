@@ -1,4 +1,4 @@
-// components/owners/OwnerDocumentsManager.jsx
+// OwnerDocumentsManager.jsx - Clean version
 import { useState } from 'react';
 import OwnerSelector from './OwnerSelector';
 import OwnerDocumentsSection from './OwnerDocumentsSection';
@@ -9,12 +9,12 @@ export default function OwnerDocumentsManager({ onUpdate }) {
 
   return (
     <div className="space-y-6">
+      {/* Only ONE selector - here in the parent */}
       <OwnerSelector onSelect={setSelectedOwner} selectedOwner={selectedOwner} />
       
       {selectedOwner ? (
         <OwnerDocumentsSection 
-          ownerId={selectedOwner.id} 
-          ownerName={selectedOwner.owner_name} 
+          selectedOwner={selectedOwner}
           onUpdate={onUpdate}
         />
       ) : (

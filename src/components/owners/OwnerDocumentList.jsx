@@ -1,11 +1,12 @@
+// OwnerDocumentList.jsx - Enhanced with Customer Document List features
 import useFetch from '../../hooks/useFetch';
 import { Eye, Upload, X, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { moduleApi } from '../../services/api';
 
-export default function DocumentList({ customerId, onDocumentUpdated }) {
-  const { data, loading, refetch } = useFetch(`/customers/${customerId}/documents`);
+export default function OwnerDocumentList({ ownerId, onDocumentUpdated }) {
+  const { data, loading, refetch } = useFetch(`/owners/${ownerId}/documents`);
   const [preview, setPreview] = useState(null);
   const [uploadProgress, setUploadProgress] = useState({});
   const [optimisticUpdates, setOptimisticUpdates] = useState({});
@@ -29,6 +30,24 @@ export default function DocumentList({ customerId, onDocumentUpdated }) {
 
     return null;
   };
+
+  // Transform API response (array) to match the expected document structure
+  const transformDocuments = (apiData) => {
+    if (!apiData || !Array.isArray(apiData)) return [];
+    
+    return apiData.map(doc => ({
+      id: doc.id,
+      document_type: doc.document_type,
+      file_url: doc.file_url,
+      is_verified: doc.is_verified === 1,
+      rejection_reason: doc.rejection_reason,
+      extracted_text: doc.extracted_data ? JSON.stringify(JSON.parse(doc.extracted_data), null, 2) : null,
+      created_at: doc.created_at,
+      updated_at: doc.updated_at
+    }));
+  };
+
+  const documents = transformDocuments(data);
 
   const handleReupload = async (document, file) => {
     const error = validateFile(file);
@@ -75,10 +94,30 @@ export default function DocumentList({ customerId, onDocumentUpdated }) {
 
     try {
       const formData = new FormData();
-      formData.append("document_type", document.document_type);
+      
+      // Parse document type to determine document_type and side
+      let docType = '';
+      let docSide = null;
+      
+      if (document.document_type === 'cnic_front') {
+        docType = 'cnic_front';
+        docSide = 'front';
+      } else if (document.document_type === 'cnic_back') {
+        docType = 'cnic_back';
+        docSide = 'back';
+      } else if (document.document_type === 'driving_license') {
+        docType = 'driving_license';
+        docSide = 'front';
+      } else if (document.document_type === 'driving_license_back') {
+        docType = 'driving_license';
+        docSide = 'back';
+      }
+      
+      formData.append("document_type", docType);
+      if (docSide) formData.append("document_side", docSide);
       formData.append("images", file);
 
-      await moduleApi.create(`/customers/${customerId}/documents`, formData);
+      await moduleApi.create(`/owners/${ownerId}/documents`, formData);
 
       // Complete progress
       setOptimisticUpdates(prev => ({
@@ -89,7 +128,7 @@ export default function DocumentList({ customerId, onDocumentUpdated }) {
         }
       }));
 
-      toast.success(`${document.document_type.replace("_", " ")} re-uploaded successfully`);
+      toast.success(`${document.document_type.replace(/_/g, " ")} re-uploaded successfully`);
       
       // Wait a moment to show 100% before refreshing
       setTimeout(async () => {
@@ -147,6 +186,17 @@ export default function DocumentList({ customerId, onDocumentUpdated }) {
     return optimisticUpdates[docId]?.isUploading || false;
   };
 
+  // Get display name for document type
+  const getDocumentDisplayName = (documentType) => {
+    const names = {
+      'cnic_front': 'CNIC Front',
+      'cnic_back': 'CNIC Back',
+      'driving_license_front': 'Driving License Front',
+      'driving_license_back': 'Driving License Back'
+    };
+    return names[documentType] || documentType.replace(/_/g, " ");
+  };
+
   if (loading) return (
     <div className="flex justify-center items-center py-8">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -165,7 +215,7 @@ export default function DocumentList({ customerId, onDocumentUpdated }) {
       />
 
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-800">Customer Documents</h2>
+        <h2 className="text-lg font-semibold text-gray-800">Owner Documents</h2>
         <button
           onClick={() => refetch()}
           className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
@@ -176,13 +226,14 @@ export default function DocumentList({ customerId, onDocumentUpdated }) {
       </div>
 
       {/* GRID */}
-      {data?.length === 0 ? (
+      {documents.length === 0 ? (
         <div className="text-center py-8 bg-gray-50 rounded-xl">
           <p className="text-gray-500">No documents uploaded yet</p>
+          <p className="text-xs text-gray-400 mt-2">Required: CNIC Front, CNIC Back, Driving License</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {data?.map((doc) => {
+          {documents.map((doc) => {
             const uploading = isUploading(doc.id);
             const progress = getUploadProgress(doc.id);
             const imageUrl = getDocumentImageUrl(doc);
@@ -273,7 +324,7 @@ export default function DocumentList({ customerId, onDocumentUpdated }) {
                 {/* DOCUMENT TYPE */}
                 <div className="mt-2">
                   <div className="text-sm font-medium capitalize text-gray-800 flex items-center justify-between">
-                    <span>{doc.document_type.replace(/_/g, " ")}</span>
+                    <span>{getDocumentDisplayName(doc.document_type)}</span>
                     {uploading && (
                       <div className="animate-pulse">
                         <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -303,11 +354,11 @@ export default function DocumentList({ customerId, onDocumentUpdated }) {
                     <p className="text-xs text-red-600">
                       <span className="font-semibold">Rejected:</span> {doc.rejection_reason}
                     </p>
-                    {doc.extracted_text && (
+                    {doc.extracted_text && doc.extracted_text !== '{}' && (
                       <details className="mt-1">
                         <summary className="text-xs text-gray-500 cursor-pointer">Show extracted text</summary>
-                        <p className="text-xs text-gray-600 mt-1 p-1 bg-gray-100 rounded">
-                          {doc.extracted_text.substring(0, 200)}...
+                        <p className="text-xs text-gray-600 mt-1 p-1 bg-gray-100 rounded break-words max-h-32 overflow-y-auto">
+                          {doc.extracted_text}
                         </p>
                       </details>
                     )}

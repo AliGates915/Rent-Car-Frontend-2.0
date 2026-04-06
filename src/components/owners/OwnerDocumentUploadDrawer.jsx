@@ -1,16 +1,19 @@
+// OwnerDocumentUploadDrawer.jsx - Updated to use unified endpoint
+
 import { useState, useCallback, useRef } from "react";
 import { moduleApi } from "../../services/api";
 import toast from "react-hot-toast";
 
-export default function DocumentUploadDrawer({ 
-  customerId,  
+export default function OwnerDocumentUploadDrawer({ 
+  ownerId,  
   onClose, 
   onSuccess,
-  existingDocuments = [] 
+  existingDocuments = [],
+  defaultDocumentType = null
 }) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [type, setType] = useState("");
+  const [type, setType] = useState(defaultDocumentType || "");
   const [isUploading, setIsUploading] = useState(false);
   const [validationError, setValidationError] = useState("");
   const fileInputRef = useRef(null);
@@ -19,13 +22,26 @@ export default function DocumentUploadDrawer({
   const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
   const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
-
-  
   const documentNames = {
     cnic_front: 'CNIC Front',
     cnic_back: 'CNIC Back',
     driving_license: 'Driving License',
   };
+
+  // Map frontend document types to backend expected values
+  const getBackendDocumentType = (docType) => {
+    if (docType === 'cnic_front') {
+      return 'cnic_front';
+    }
+    if ( docType === 'cnic_back') {
+      return 'cnic_back';
+    }
+    if (docType === 'driving_license') {
+      return 'driving_license';
+    }
+    return '';
+  };
+
 
   const validateFile = (file) => {
     if (!file) return "No file selected";
@@ -45,7 +61,7 @@ export default function DocumentUploadDrawer({
     const selectedFile = e.target.files[0];
     setValidationError("");
     
-    if (!selectedFile) return alert("Required");
+    if (!selectedFile) return;
     
     const error = validateFile(selectedFile);
     
@@ -74,7 +90,7 @@ export default function DocumentUploadDrawer({
     setValidationError("");
     
     const droppedFile = e.dataTransfer.files[0];
-    if (!droppedFile) return alert("Required");
+    if (!droppedFile) return;
     
     const error = validateFile(droppedFile);
     
@@ -100,12 +116,11 @@ export default function DocumentUploadDrawer({
     
     // Check if document already exists
     if (isDocumentAlreadyUploaded(selectedType)) {
-      setValidationError(`This document (${documentNames[selectedType]}) has already been uploaded for this customer.`);
+      setValidationError(`This document (${documentNames[selectedType]}) has already been uploaded for this owner.`);
     }
   };
 
-
-  // Upload document
+  // Upload document using unified endpoint
   const handleUpload = async () => {
     setValidationError("");
     
@@ -136,19 +151,24 @@ export default function DocumentUploadDrawer({
     
     try {
       const formData = new FormData();
-      formData.append("document_type", type);
-      formData.append("images", file);
       
-      for (let pair of formData.entries()) {
-        console.log(pair);
-      }
+      // Get backend document type and side
+      const documentType = getBackendDocumentType(type);
+      
+      // Append to form data as expected by backend
+      formData.append("document_type", documentType);
+      formData.append("images", file); // 'images' as expected by upload.single("images")
+      
+      
+
+      // Use the unified endpoint
       await moduleApi.create(
-        `/customers/${customerId}/documents`,
+        `/owners/${ownerId}/documents`,
         formData
       );
       
       toast.success(`${documentNames[type]} uploaded successfully`);
-      onSuccess?.(); // Call success callback to refresh parent
+      onSuccess?.();
       onClose();
     } catch (error) {
       console.error("Upload error:", error);
@@ -201,7 +221,7 @@ export default function DocumentUploadDrawer({
         
         {/* Header */}
         <div className="flex justify-between items-center border-b pb-3">
-          <h2 className="text-xl font-semibold text-gray-800">Upload Document</h2>
+          <h2 className="text-xl font-semibold text-gray-800">Upload Owner Document</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -239,6 +259,7 @@ export default function DocumentUploadDrawer({
             value={type}
             onChange={(e) => handleTypeChange(e.target.value)}
             className="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
+            disabled={!!defaultDocumentType}
           >
             <option value="">Select Document Type</option>
             {availableOptions.map(option => (
