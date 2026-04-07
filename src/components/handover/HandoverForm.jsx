@@ -1,0 +1,575 @@
+// frontend/src/components/handover/HandoverForm.jsx
+import { useState, useEffect } from 'react';
+import { Car, Calendar, Fuel, Gauge, User, PenTool, Signature, Package, AlertCircle } from 'lucide-react';
+import { moduleApi } from '../../services/api';
+import useFetch from '../../hooks/useFetch';
+import toast from 'react-hot-toast';
+
+export default function HandoverForm({ config, editingRecord, onSuccess, onCancelEdit }) {
+  const [formData, setFormData] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [accessories, setAccessories] = useState([]);
+  const [availableAccessories, setAvailableAccessories] = useState([]);
+  const [selectedBookingDetails, setSelectedBookingDetails] = useState(null);
+  const [handoverWarning, setHandoverWarning] = useState(null);
+
+  // Fetch confirmed bookings for selection
+  const { data: confirmedBookings } = useFetch('/bookings?status=confirmed');
+
+  // Fetch accessories list
+  useEffect(() => {
+    const fetchAccessories = async () => {
+      try {
+        const response = await moduleApi.getAll('/accessory-types');
+        setAvailableAccessories(response.data || []);
+        if (response.data && response.data.length > 0) {
+          setAccessories(response.data.map(acc => ({
+            accessory_type_id: acc.id,
+            accessory_name: acc.name,
+            is_given: false,
+            remarks: ''
+          })));
+        }
+      } catch (error) {
+        const defaultAccessories = [
+          { id: 1, name: 'Spare Tire' },
+          { id: 2, name: 'Tool Kit' },
+          { id: 3, name: 'First Aid Kit' },
+          { id: 4, name: 'Fire Extinguisher' },
+          { id: 5, name: 'Jack' }
+        ];
+        setAvailableAccessories(defaultAccessories);
+        setAccessories(defaultAccessories.map(acc => ({
+          accessory_type_id: acc.id,
+          accessory_name: acc.name,
+          is_given: false,
+          remarks: ''
+        })));
+      }
+    };
+    fetchAccessories();
+  }, []);
+
+  // Initialize form
+  useEffect(() => {
+    const now = new Date();
+    // Format to YYYY-MM-DDTHH:MM without timezone issues
+    const formattedNow = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    
+    const initialData = {
+      booking_id: '',
+      vehicle_id: '',
+      handed_over_by: '',
+      handover_datetime: formattedNow,
+      km_out: '',
+      fuel_level_out: '',
+      vehicle_out_notes: '',
+      customer_signature_url: '',
+      staff_signature_url: ''
+    };
+
+    if (editingRecord) {
+      Object.keys(initialData).forEach(key => {
+        if (editingRecord[key] !== undefined && editingRecord[key] !== null) {
+          initialData[key] = editingRecord[key];
+        }
+      });
+      
+      if (editingRecord.accessories && editingRecord.accessories.length > 0) {
+        const updatedAccessories = accessories.map(acc => {
+          const existing = editingRecord.accessories.find(
+            a => a.accessory_type_id === acc.accessory_type_id
+          );
+          if (existing) {
+            return { ...acc, is_given: existing.is_given === 1, remarks: existing.remarks || '' };
+          }
+          return acc;
+        });
+        setAccessories(updatedAccessories);
+      }
+    }
+
+    setFormData(initialData);
+  }, [editingRecord]);
+
+  // Auto-populate vehicle and validate handover date when booking is selected
+  const handleBookingChange = async (bookingId) => {
+    setFormData(prev => ({ ...prev, booking_id: bookingId }));
+    setHandoverWarning(null);
+    
+    if (bookingId) {
+      try {
+        const response = await moduleApi.getOne('/bookings', bookingId);
+        if (response.data) {
+          const booking = response.data;
+          setSelectedBookingDetails(booking);
+          
+          setFormData(prev => ({
+            ...prev,
+            vehicle_id: booking.vehicle_id,
+            booking_id: bookingId
+          }));
+          
+          // Validate handover date against booking dates
+          validateHandoverDate(formData.handover_datetime, booking);
+        }
+      } catch (error) {
+        console.error('Failed to fetch booking details:', error);
+      }
+    } else {
+      setSelectedBookingDetails(null);
+    }
+  };
+
+  // Validate handover date against booking start and end dates
+  const validateHandoverDate = (handoverDateTime, booking = selectedBookingDetails) => {
+    if (!handoverDateTime || !booking) return;
+    
+    const handoverDate = new Date(handoverDateTime);
+    const startDate = new Date(booking.date_from);
+    const endDate = new Date(booking.date_to);
+    
+    // Remove time portion for date comparison
+    handoverDate.setHours(0, 0, 0, 0);
+    const startDateOnly = new Date(startDate);
+    startDateOnly.setHours(0, 0, 0, 0);
+    const endDateOnly = new Date(endDate);
+    endDateOnly.setHours(0, 0, 0, 0);
+    
+    if (handoverDate < startDateOnly) {
+      setHandoverWarning({
+        type: 'early',
+        message: `⚠️ Early Handover: Vehicle is being handed over ${Math.ceil((startDateOnly - handoverDate) / (1000 * 60 * 60 * 24))} days before the booking start date (${new Date(startDate).toLocaleDateString()}).`,
+        suggestion: 'Consider adjusting the booking start date or confirm early handover with customer.'
+      });
+    } else if (handoverDate > endDateOnly) {
+      setHandoverWarning({
+        type: 'late',
+        message: `⚠️ Late Handover: Vehicle is being handed over after the booking end date (${new Date(endDate).toLocaleDateString()}).`,
+        suggestion: 'The booking may need to be extended or a new booking created.'
+      });
+    } else if (handoverDate >= startDateOnly && handoverDate <= endDateOnly) {
+      const daysDiff = Math.ceil((handoverDate - startDateOnly) / (1000 * 60 * 60 * 24));
+      if (daysDiff === 0) {
+        setHandoverWarning({
+          type: 'ontime',
+          message: '✅ On-time handover on the booking start date.',
+          suggestion: 'Perfect timing for handover.'
+        });
+      } else if (daysDiff > 0) {
+        setHandoverWarning({
+          type: 'delayed',
+          message: `⚠️ Delayed Handover: Vehicle is being handed over ${daysDiff} days after the booking start date.`,
+          suggestion: 'Customer may be due for compensation or discount.'
+        });
+      }
+    } else {
+      setHandoverWarning(null);
+    }
+  };
+
+  const handleChange = (name, value) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'handover_datetime') {
+      // Clear future date error when user changes date
+      setErrors(prev => ({ ...prev, handover_datetime: '' }));
+      if (selectedBookingDetails) {
+        validateHandoverDate(value, selectedBookingDetails);
+      }
+    }
+    
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleAccessoryChange = (index, field, value) => {
+    const updated = [...accessories];
+    updated[index][field] = value;
+    setAccessories(updated);
+  };
+
+  const validateForm = () => {
+    const requiredFields = ['booking_id', 'vehicle_id', 'handed_over_by', 'km_out', 'fuel_level_out'];
+    const newErrors = {};
+
+    requiredFields.forEach(field => {
+      if (!formData[field]) {
+        const labels = {
+          booking_id: 'Booking',
+          vehicle_id: 'Vehicle',
+          handed_over_by: 'Handed Over By',
+          km_out: 'Odometer Reading',
+          fuel_level_out: 'Fuel Level'
+        };
+        newErrors[field] = `${labels[field]} is required`;
+      }
+    });
+
+    // FIXED: Validate handover date is not in future (allow same day)
+    if (formData.handover_datetime) {
+      const handoverDate = new Date(formData.handover_datetime);
+      const now = new Date();
+      
+      // Reset time to beginning of day for date comparison
+      const handoverDateOnly = new Date(handoverDate.getFullYear(), handoverDate.getMonth(), handoverDate.getDate());
+      const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      // Allow handover on current date or past dates, block future dates
+      if (handoverDateOnly > nowDateOnly) {
+        newErrors.handover_datetime = 'Handover date cannot be in the future';
+      }
+      // Also check if time is too far in future for same day
+      else if (handoverDateOnly.getTime() === nowDateOnly.getTime() && handoverDate > now) {
+        // Allow time up to 23:59 on current day, just show warning but don't block
+        console.log('Handover time is in the future on current day');
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    // Confirm early/late handover with warning
+    if (handoverWarning && (handoverWarning.type === 'early' || handoverWarning.type === 'late' || handoverWarning.type === 'delayed')) {
+      const confirmMessage = `${handoverWarning.message}\n\n${handoverWarning.suggestion}\n\nDo you want to proceed with handover?`;
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+    }
+
+    setLoading(true);
+
+    try {
+      const accessoriesData = accessories
+        .filter(acc => acc.is_given === true || acc.is_given === 1)
+        .map(acc => ({
+          accessory_type_id: acc.accessory_type_id,
+          is_given: true,
+          remarks: acc.remarks || null
+        }));
+
+      const submitData = {
+        booking_id: parseInt(formData.booking_id),
+        vehicle_id: parseInt(formData.vehicle_id),
+        handed_over_by: formData.handed_over_by,
+        handover_datetime: formData.handover_datetime || new Date().toISOString().slice(0, 19).replace('T', ' '),
+        km_out: parseFloat(formData.km_out),
+        fuel_level_out: formData.fuel_level_out,
+        vehicle_out_notes: formData.vehicle_out_notes || null,
+        customer_signature_url: formData.customer_signature_url || null,
+        staff_signature_url: formData.staff_signature_url || null,
+        accessories: accessoriesData
+      };
+
+      console.log('Submitting handover data:', submitData);
+
+      if (editingRecord) {
+        await moduleApi.update('/handover', editingRecord.id, submitData);
+        toast.success('Handover updated successfully');
+      } else {
+        await moduleApi.create('/handover', submitData);
+        toast.success('Vehicle handed over successfully');
+      }
+
+      onSuccess();
+    } catch (error) {
+      console.error('Submit error:', error);
+      toast.error(error.response?.data?.message || 'Failed to process handover');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="p-6 border-b border-slate-200">
+          <h2 className="text-xl font-semibold text-slate-900">
+            {editingRecord ? 'Edit Vehicle Handover' : 'Vehicle Handover'}
+          </h2>
+          <p className="text-sm text-slate-500 mt-1">
+            Record vehicle handover details and accessories
+          </p>
+        </div>
+
+        <div className="p-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {/* Booking Selection */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Booking <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.booking_id || ""}
+                onChange={(e) => handleBookingChange(parseInt(e.target.value))}
+                className={`w-full rounded-xl border ${errors.booking_id ? 'border-red-500' : 'border-slate-200'} bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
+              >
+                <option value="">Select Confirmed Booking</option>
+                {confirmedBookings?.map(booking => (
+                  <option key={booking.id} value={booking.id}>
+                    {booking.booking_code} - {booking.customer_name} ({booking.car_make} {booking.car_model})
+                  </option>
+                ))}
+              </select>
+              {errors.booking_id && <p className="text-xs text-red-500">{errors.booking_id}</p>}
+            </div>
+
+            {/* Vehicle Display */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Vehicle <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Car className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  type="text"
+                  value={formData.vehicle_id ? `Vehicle ID: ${formData.vehicle_id}` : ''}
+                  disabled
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 py-2.5 text-sm text-slate-600"
+                  placeholder="Vehicle will be auto-filled from booking"
+                />
+              </div>
+            </div>
+
+            {/* Handed Over By */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Handed Over By <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  type="text"
+                  value={formData.handed_over_by || ''}
+                  onChange={(e) => handleChange('handed_over_by', e.target.value)}
+                  className={`w-full rounded-xl border ${errors.handed_over_by ? 'border-red-500' : 'border-slate-200'} bg-white pl-10 pr-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
+                  placeholder="Staff name or ID"
+                />
+              </div>
+              {errors.handed_over_by && <p className="text-xs text-red-500">{errors.handed_over_by}</p>}
+            </div>
+
+            {/* Handover Date & Time */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Handover Date & Time <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  type="datetime-local"
+                  value={formData.handover_datetime || ''}
+                  onChange={(e) => handleChange('handover_datetime', e.target.value)}
+                  max={new Date().toISOString().slice(0, 16)} // Prevent selecting future dates
+                  className={`w-full rounded-xl border ${errors.handover_datetime ? 'border-red-500' : 'border-slate-200'} bg-white pl-10 pr-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
+                />
+              </div>
+              {errors.handover_datetime && <p className="text-xs text-red-500">{errors.handover_datetime}</p>}
+            </div>
+
+            {/* Booking Date Range Display */}
+            {selectedBookingDetails && (
+              <div className="md:col-span-2 p-3 bg-blue-50 rounded-lg">
+                <div className="text-sm">
+                  <div className="font-medium text-blue-900 mb-1">Booking Details:</div>
+                  <div className="grid grid-cols-2 gap-2 text-blue-800">
+                    <div>📅 Start Date: {new Date(selectedBookingDetails.date_from).toLocaleDateString()}</div>
+                    <div>📅 End Date: {new Date(selectedBookingDetails.date_to).toLocaleDateString()}</div>
+                    <div>💰 Total Amount: Rs. {selectedBookingDetails.total_amount?.toLocaleString()}</div>
+                    <div>💵 Advance Paid: Rs. {selectedBookingDetails.advance_amount?.toLocaleString()}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Handover Warning Message */}
+            {handoverWarning && (
+              <div className={`md:col-span-2 p-3 rounded-lg ${
+                handoverWarning.type === 'ontime' ? 'bg-green-50 border border-green-200' :
+                handoverWarning.type === 'early' ? 'bg-yellow-50 border border-yellow-200' :
+                'bg-orange-50 border border-orange-200'
+              }`}>
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={18} className={
+                    handoverWarning.type === 'ontime' ? 'text-green-600' : 'text-yellow-600'
+                  } />
+                  <div className="text-sm">
+                    <p className={handoverWarning.type === 'ontime' ? 'text-green-800' : 'text-yellow-800'}>
+                      {handoverWarning.message}
+                    </p>
+                    <p className="text-xs mt-1 text-slate-600">{handoverWarning.suggestion}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Odometer Out */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Odometer Reading (km) <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Gauge className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  type="number"
+                  value={formData.km_out || ''}
+                  onChange={(e) => handleChange('km_out', parseInt(e.target.value))}
+                  className={`w-full rounded-xl border ${errors.km_out ? 'border-red-500' : 'border-slate-200'} bg-white pl-10 pr-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
+                  placeholder="e.g., 15000"
+                  min="0"
+                />
+              </div>
+              {errors.km_out && <p className="text-xs text-red-500">{errors.km_out}</p>}
+            </div>
+
+            {/* Fuel Level Out */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Fuel Level <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Fuel className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <select
+                  value={formData.fuel_level_out || ''}
+                  onChange={(e) => handleChange('fuel_level_out', e.target.value)}
+                  className={`w-full rounded-xl border ${errors.fuel_level_out ? 'border-red-500' : 'border-slate-200'} bg-white pl-10 pr-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
+                >
+                  <option value="">Select Fuel Level</option>
+                  <option value="Full">Full</option>
+                  <option value="3/4">3/4 Tank</option>
+                  <option value="1/2">1/2 Tank</option>
+                  <option value="1/4">1/4 Tank</option>
+                  <option value="Empty">Empty</option>
+                </select>
+              </div>
+              {errors.fuel_level_out && <p className="text-xs text-red-500">{errors.fuel_level_out}</p>}
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2 md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Handover Notes
+              </label>
+              <div className="relative">
+                <PenTool className="absolute left-3 top-3 text-slate-400" size={18} />
+                <textarea
+                  value={formData.vehicle_out_notes || ''}
+                  onChange={(e) => handleChange('vehicle_out_notes', e.target.value)}
+                  rows={3}
+                  className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
+                  placeholder="Any damages, scratches, or special instructions..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Accessories Section */}
+          {availableAccessories.length > 0 && (
+            <div className="mt-8 pt-6 border-t border-slate-200">
+              <h3 className="text-md font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <Package size={18} />
+                Vehicle Accessories
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {accessories.map((acc, index) => (
+                  <div key={acc.accessory_type_id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
+                    <input
+                      type="checkbox"
+                      checked={acc.is_given === true || acc.is_given === 1}
+                      onChange={(e) => handleAccessoryChange(index, 'is_given', e.target.checked)}
+                      className="mt-1 w-4 h-4 rounded border-slate-300"
+                    />
+                    <div className="flex-1">
+                      <label className="text-sm font-medium text-slate-700">
+                        {acc.accessory_name}
+                      </label>
+                      {acc.is_given && (
+                        <input
+                          type="text"
+                          placeholder="Remarks (optional)"
+                          value={acc.remarks || ''}
+                          onChange={(e) => handleAccessoryChange(index, 'remarks', e.target.value)}
+                          className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Signatures Section */}
+          <div className="mt-8 pt-6 border-t border-slate-200">
+            <h3 className="text-md font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <Signature size={18} />
+              Signatures
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Customer Signature URL
+                </label>
+                <input
+                  type="text"
+                  value={formData.customer_signature_url || ''}
+                  onChange={(e) => handleChange('customer_signature_url', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
+                  placeholder="https://..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Staff Signature URL
+                </label>
+                <input
+                  type="text"
+                  value={formData.staff_signature_url || ''}
+                  onChange={(e) => handleChange('staff_signature_url', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
+                  placeholder="https://..."
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Actions */}
+        <div className="flex justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-200">
+          <button
+            type="button"
+            onClick={onCancelEdit}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                {editingRecord ? 'Updating...' : 'Handover Vehicle...'}
+              </>
+            ) : (
+              <>{editingRecord ? 'Update Handover' : 'Complete Handover'}</>
+            )}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}

@@ -21,13 +21,58 @@ import VehicleDocumentsManager from '../components/vehicles/documents/VehicleDoc
 import OwnerDocumentsManager from '../components/owners/OwnerDocumentsManager';
 import OwnerEarningsManager from '../components/owners/onwer-earning/OwnerEarningsManager';
 import SetupManager from '../components/setup/SetupManager';
+import BookingForm from '../components/bookings/BookingForm';
+import BookingListView from '../components/bookings/BookingListView';
+import BookingCalendar from '../components/bookings/BookingCalendar';
+import BookingHistory from '../components/bookings/BookingHistory';
+import HandoverForm from '../components/handover/HandoverForm';
+import HandoverListView from '../components/handover/HandoverListView';
+import ReturnForm from '../components/return/ReturnForm';
+import ReturnListView from '../components/return/ReturnListView';
+
+// frontend/src/pages/ModulePage.jsx
 
 function buildFilters(config, filterValues) {
-  return (config.filters || []).map((filter) => ({
-    key: filter.key,
-    value: filterValues[filter.key] || '',
-    options: filter.options || [{ label: `All ${filter.label}`, value: '' }],
-  }));
+  if (!config?.filters || !Array.isArray(config.filters)) {
+    return [];
+  }
+
+  return config.filters
+    .filter(filter => filter && filter.key) // Filter out invalid filters
+    .map((filter) => {
+      // Handle options safely
+      let options = [];
+      
+      if (filter.options && Array.isArray(filter.options)) {
+        options = filter.options.map(opt => {
+          // If option is already an object with label/value
+          if (typeof opt === 'object' && opt !== null) {
+            return {
+              label: opt.label || opt.value || `All ${filter.label}`,
+              value: opt.value || opt.label || ''
+            };
+          }
+          // If option is a primitive value
+          return {
+            label: opt === '' || opt === null ? `All ${filter.label}` : String(opt),
+            value: opt === null || opt === undefined ? '' : opt
+          };
+        });
+      } else {
+        // Default option when no options provided
+        options = [{ 
+          label: `All ${filter.label || filter.key}`, 
+          value: '' 
+        }];
+      }
+      
+      return {
+        key: filter.key,
+        value: filterValues[filter.key] || '',
+        label: filter.label || filter.key,
+        options: options
+      };
+    });
 }
 
 function PlaceholderContent({ title }) {
@@ -36,24 +81,24 @@ function PlaceholderContent({ title }) {
 
 export default function ModulePage({ moduleKey }) {
   const config = moduleConfigs[moduleKey];
-  
+
   // For setup module, use special handling
   if (moduleKey === 'setup') {
     const [selectedSetupType, setSelectedSetupType] = useState(config.setupTypes[0]?.key);
-    
+
     return (
       <div className="space-y-5">
         <div className="flex flex-col gap-3">
-          <TabComponent 
-            tabs={config.tabs} 
-            activeTab={selectedSetupType} 
-            onChange={setSelectedSetupType} 
+          <TabComponent
+            tabs={config.tabs}
+            activeTab={selectedSetupType}
+            onChange={setSelectedSetupType}
           />
         </div>
         <div className="animate-in fade-in-50 duration-300">
           {selectedSetupType && (
-            <SetupManager 
-              setupType={selectedSetupType} 
+            <SetupManager
+              setupType={selectedSetupType}
               key={selectedSetupType}
             />
           )}
@@ -61,7 +106,7 @@ export default function ModulePage({ moduleKey }) {
       </div>
     );
   }
-  
+
   // For non-setup modules, use regular handling
   return <RegularModulePage moduleKey={moduleKey} config={config} />;
 }
@@ -129,8 +174,6 @@ function RegularModulePage({ moduleKey, config }) {
     setActiveTab(config.tabs.find((tab) => tab.key === 'list')?.key || defaultTab);
   };
 
-  const tableTitle = activeTab === 'history' ? `${config.title} History` : `${config.title} List`;
-
   const renderTabContent = () => {
     switch (activeTab) {
       case 'form':
@@ -144,10 +187,41 @@ function RegularModulePage({ moduleKey, config }) {
             />
           );
         }
+        if (moduleKey === 'bookings') {
+          return (
+            <BookingForm
+              config={config}
+              editingRecord={editingRecord}
+              onSuccess={handleSuccess}
+              onCancelEdit={() => setEditingRecord(null)}
+            />
+          );
+        }
+        if (moduleKey === 'return') {
+          return (
+            <ReturnForm
+              config={config}
+              editingRecord={editingRecord}
+              onSuccess={handleSuccess}
+              onCancelEdit={() => setEditingRecord(null)}
+            />
+          );
+        }
+
+
+        if (moduleKey === 'handover') {
+          return (
+            <HandoverForm
+              config={config}
+              editingRecord={editingRecord}
+              onSuccess={handleSuccess}
+              onCancelEdit={() => setEditingRecord(null)}
+            />
+          );
+        }
         return <GenericForm config={config} editingRecord={editingRecord} onSuccess={handleSuccess} onCancelEdit={() => setEditingRecord(null)} />;
-      
+
       case 'list':
-      case 'history':
         if (moduleKey === 'vehicles') {
           const filters = buildFilters(config, filterValues);
           return (
@@ -174,14 +248,38 @@ function RegularModulePage({ moduleKey, config }) {
             />
           );
         }
-
+        if (moduleKey === 'bookings') {
+          return (
+            <BookingListView
+              bookings={data}
+              loading={loading}
+              search={search}
+              onSearch={(val) => {
+                setSearch(val);
+                setPage(1);
+              }}
+              filters={buildFilters(config, filterValues)}
+              filterValues={filterValues}
+              onFilterChange={(key, value) => {
+                setPage(1);
+                setFilterValues((prev) => ({ ...prev, [key]: value }));
+              }}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              page={page}
+              total={meta.total}
+              limit={meta.limit}
+              onPageChange={setPage}
+            />
+          );
+        }
         if (moduleKey === 'owner-earnings') {
           return <OwnerEarningsManager />;
         }
-
+        // Default DataTable for other modules
         return (
           <DataTable
-            title={tableTitle}
+            title={`${config.title} List`}
             description="Search, filter, paginate, and manage records inline."
             columns={config.columns}
             data={data}
@@ -202,20 +300,105 @@ function RegularModulePage({ moduleKey, config }) {
             actions={Boolean(config.fields.length || config.columns.length)}
           />
         );
-      
+
+      case 'history':
+        if (moduleKey === 'bookings') {
+          return <BookingHistory />;
+        }
+
+        if (moduleKey === 'handover') {
+          return (
+            <HandoverListView
+              handovers={data}
+              loading={loading}
+              search={search}
+              onSearch={(val) => {
+                setSearch(val);
+                setPage(1);
+              }}
+              filters={buildFilters(config, filterValues)}
+              filterValues={filterValues}
+              onFilterChange={(key, value) => {
+                setPage(1);
+                setFilterValues((prev) => ({ ...prev, [key]: value }));
+              }}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              page={page}
+              total={meta.total}
+              limit={meta.limit}
+              onPageChange={setPage}
+            />
+          );
+        }
+        if (moduleKey === 'return') {
+          return (
+            <ReturnListView
+              returns={data}
+              loading={loading}
+              search={search}
+              onSearch={(val) => {
+                setSearch(val);
+                setPage(1);
+              }}
+              filters={buildFilters(config, filterValues)}
+              filterValues={filterValues}
+              onFilterChange={(key, value) => {
+                setPage(1);
+                setFilterValues((prev) => ({ ...prev, [key]: value }));
+              }}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              page={page}
+              total={meta.total}
+              limit={meta.limit}
+              onPageChange={setPage}
+            />
+          );
+        }
+        
+
+        return (
+          <DataTable
+            title={`${config.title} History`}
+            description="Historical records view"
+            columns={config.columns}
+            data={data}
+            loading={loading}
+            search={search}
+            onSearch={setSearch}
+            filters={buildFilters(config, filterValues)}
+            onFilterChange={(key, value) => {
+              setPage(1);
+              setFilterValues((prev) => ({ ...prev, [key]: value }));
+            }}
+            page={page}
+            total={meta.total}
+            limit={meta.limit}
+            onPageChange={setPage}
+            actions={false}
+          />
+        );
+
+      case 'calendar':
+        if (moduleKey === 'bookings') {
+          return <BookingCalendar />;
+        }
+        return <PlaceholderContent title={activeTab} />;
+
       case 'images':
         if (moduleKey === 'vehicles') {
           return <VehicleImageGallery vehicle={selectedVehicle || data?.[0]} />;
         }
         return <PlaceholderContent title={activeTab} />;
-      
+
       case 'report':
       case 'summary':
       case 'profit-loss':
       case 'daybook':
       case 'due':
         return <ReportSection title={config.title} />;
-      
+
       case 'documents':
         if (moduleKey === 'vehicles') {
           return <VehicleDocumentsManager />;
@@ -224,10 +407,10 @@ function RegularModulePage({ moduleKey, config }) {
           return <OwnerDocumentsManager onUpdate={refetch} />;
         }
         return <CustomerDocumentsSection />;
-      
+
       case 'references':
         return <CustomerReferencesSection />;
-      
+
       default:
         return <TimelineSection title={`${config.title} Timeline`} />;
     }
@@ -237,7 +420,7 @@ function RegularModulePage({ moduleKey, config }) {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <TabComponent tabs={config.tabs} activeTab={activeTab} onChange={setActiveTab} />
-        {config.fields.length && activeTab !== 'form' && moduleKey !== 'owner-earnings' ? (
+        {config.fields?.length > 0 && activeTab !== 'form' && moduleKey !== 'owner-earnings' && moduleKey !== 'bookings-history' ? (
           <button
             type="button"
             onClick={handleAddNew}

@@ -12,27 +12,24 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
   const [imagePreviews, setImagePreviews] = useState([]);
   const [errors, setErrors] = useState({});
   const [imagesToDelete, setImagesToDelete] = useState([]);
-  
+
   // Fetch owners for the dropdown
   const { data: owners, loading: ownersLoading } = useFetch('/owners');
-  
-  // Fetch vehicle types, transmission types, fuel types
-  const { data: vehicleTypes } = useFetch('/vehicle-types');
-  const { data: transmissionTypes } = useFetch('/maintenance-types?search=transmission');
-  const { data: fuelTypes } = useFetch('/maintenance-types?search=fuel');
 
   // Initialize form with default values or editing record
   useEffect(() => {
     const initialData = {
       owner_id: '',
       registration_no: '',
-      make: '',
-      model: '',
-      year: new Date().getFullYear(),
-      vehicle_type_id: '',
+      car_make: '',           // ✅ Fixed: changed from 'make'
+      car_model: '',          // ✅ Fixed: changed from 'model'
+      year_of_model: new Date().getFullYear(),  // ✅ Fixed: changed from 'year'
+      car_type: '',           // ✅ Fixed: changed from 'vehicle_type_id'
       rate_per_day: 0,
-      transmission: '',
+      transmission_type: '',  // ✅ Fixed: changed from 'transmission'
       fuel_type: '',
+      seating_capacity: '',
+      engine_capacity: '',
       location: '',
       air_conditioner: true,
       android_panel: false,
@@ -41,15 +38,15 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
       rear_camera: false,
       status: 'available'
     };
-    
+
     if (editingRecord) {
       Object.keys(initialData).forEach(key => {
-        if (editingRecord[key] !== undefined) {
+        if (editingRecord[key] !== undefined && editingRecord[key] !== null) {
           initialData[key] = editingRecord[key];
         }
       });
     }
-    
+
     setFormData(initialData);
 
     // Set existing images if editing
@@ -64,7 +61,7 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
     } else {
       setImagePreviews([]);
     }
-    
+
     setImages([]);
     setImagesToDelete([]);
   }, [editingRecord]);
@@ -79,14 +76,14 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     const totalImages = imagePreviews.filter(p => p.isExisting).length + images.length + files.length;
-    
+
     if (totalImages > 5) {
       toast.error('Maximum 5 images allowed');
       return;
     }
 
     const validFiles = [];
-    
+
     files.forEach(file => {
       if (!file.type.startsWith('image/')) {
         toast.error(`${file.name} is not a valid image`);
@@ -98,29 +95,29 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
     });
 
     setImages(prev => [...prev, ...validFiles]);
-    
+
     const newPreviews = validFiles.map((file, idx) => ({
       url: URL.createObjectURL(file),
       isExisting: false,
       file: file,
       id: Date.now() + idx
     }));
-    
+
     setImagePreviews(prev => [...prev, ...newPreviews]);
     e.target.value = '';
   };
 
   const removeImage = (index) => {
     const preview = imagePreviews[index];
-    
+
     if (preview.url && !preview.isExisting) {
       URL.revokeObjectURL(preview.url);
     }
-    
+
     if (preview.isExisting && preview.public_id) {
       setImagesToDelete(prev => [...prev, preview.public_id]);
     }
-    
+
     if (!preview.isExisting) {
       const newImageIndex = images.findIndex((_, i) => {
         const previewFile = preview.file;
@@ -130,47 +127,48 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
         setImages(prev => prev.filter((_, i) => i !== newImageIndex));
       }
     }
-    
+
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const validateForm = () => {
-    const requiredFields = ['owner_id', 'registration_no', 'make', 'model', 'year', 'vehicle_type_id', 'transmission', 'fuel_type'];
+    // ✅ Fixed: using correct API field names
+    const requiredFields = ['owner_id', 'registration_no', 'car_make', 'car_model', 'year_of_model', 'car_type', 'transmission_type', 'fuel_type'];
     const newErrors = {};
-    
+
     requiredFields.forEach(field => {
       if (!formData[field]) {
         const labels = {
           owner_id: 'Owner',
           registration_no: 'Registration No',
-          make: 'Make',
-          model: 'Model',
-          year: 'Year',
-          vehicle_type_id: 'Vehicle Type',
-          transmission: 'Transmission',
+          car_make: 'Make',
+          car_model: 'Model',
+          year_of_model: 'Year',
+          car_type: 'Vehicle Type',
+          transmission_type: 'Transmission',
           fuel_type: 'Fuel Type'
         };
         newErrors[field] = `${labels[field]} is required`;
       }
     });
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       toast.error('Please fill all required fields');
       return;
     }
-  
+
     setLoading(true);
-    
+
     try {
       const submitData = new FormData();
-      
+
       Object.keys(formData).forEach(key => {
         const value = formData[key];
         if (value !== null && value !== undefined && value !== '') {
@@ -181,15 +179,15 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
           }
         }
       });
-      
+
       images.forEach(image => {
         submitData.append('images', image);
       });
-      
+
       if (imagesToDelete.length > 0) {
         submitData.append('deleteImages', JSON.stringify(imagesToDelete));
       }
-      
+
       if (editingRecord) {
         await moduleApi.update('/vehicles', editingRecord.id, submitData);
         toast.success('Vehicle updated successfully');
@@ -197,7 +195,7 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
         await moduleApi.create('/vehicles', submitData);
         toast.success('Vehicle created successfully');
       }
-      
+
       onSuccess();
     } catch (error) {
       console.error('Submit error:', error);
@@ -206,6 +204,9 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
       setLoading(false);
     }
   };
+
+  console.log("editing ", editingRecord);
+  console.log("Form Data ", formData);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -250,10 +251,10 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               </label>
               <input
                 type="text"
-                value={formData.registration_no}
+                value={formData.registration_no || ''}
                 onChange={(e) => handleChange('registration_no', e.target.value)}
                 className={`w-full rounded-xl border ${errors.registration_no ? 'border-red-500' : 'border-slate-200'} bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
-                placeholder="ABC-123"
+                placeholder="LEA234"
               />
               {errors.registration_no && <p className="text-xs text-red-500">{errors.registration_no}</p>}
             </div>
@@ -265,12 +266,13 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               </label>
               <input
                 type="text"
-                value={formData.make}
-                onChange={(e) => handleChange('make', e.target.value)}
-                className={`w-full rounded-xl border ${errors.make ? 'border-red-500' : 'border-slate-200'} bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
-                placeholder="Toyota"
+                value={formData.car_make || ''}
+                onChange={(e) => handleChange('car_make', e.target.value)}
+                className={`w-full rounded-xl border ${errors.car_make
+                  ? 'border-red-500' : 'border-slate-200'} bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
+                placeholder="Honda"
               />
-              {errors.make && <p className="text-xs text-red-500">{errors.make}</p>}
+              {errors.car_make && <p className="text-xs text-red-500">{errors.car_make}</p>}
             </div>
 
             {/* Model */}
@@ -280,12 +282,13 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               </label>
               <input
                 type="text"
-                value={formData.model}
-                onChange={(e) => handleChange('model', e.target.value)}
-                className={`w-full rounded-xl border ${errors.model ? 'border-red-500' : 'border-slate-200'} bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
-                placeholder="Corolla"
+                value={formData.car_model || ''}
+                onChange={(e) => handleChange('car_model', e.target.value)}
+                className={`w-full rounded-xl border ${errors.car_model
+                  ? 'border-red-500' : 'border-slate-200'} bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
+                placeholder="Civic"
               />
-              {errors.model && <p className="text-xs text-red-500">{errors.model}</p>}
+              {errors.car_model && <p className="text-xs text-red-500">{errors.car_model}</p>}
             </div>
 
             {/* Year */}
@@ -295,14 +298,14 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               </label>
               <input
                 type="number"
-                value={formData.year}
-                onChange={(e) => handleChange('year', parseInt(e.target.value))}
-                className={`w-full rounded-xl border ${errors.year ? 'border-red-500' : 'border-slate-200'} bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
+                value={formData.year_of_model || ''}
+                onChange={(e) => handleChange('year_of_model', parseInt(e.target.value))}
+                className={`w-full rounded-xl border ${errors.year_of_model ? 'border-red-500' : 'border-slate-200'} bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
                 placeholder="2024"
                 min="1990"
                 max="2026"
               />
-              {errors.year && <p className="text-xs text-red-500">{errors.year}</p>}
+              {errors.year_of_model && <p className="text-xs text-red-500">{errors.year_of_model}</p>}
             </div>
 
             {/* Vehicle Type */}
@@ -311,29 +314,31 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
                 Vehicle Type <span className="text-red-500">*</span>
               </label>
               <select
-                value={formData.vehicle_type_id || ""}
-                onChange={(e) => handleChange('vehicle_type_id', e.target.value)}
-                className={`w-full rounded-xl border ${errors.vehicle_type_id ? 'border-red-500' : 'border-slate-200'} bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
+                value={formData.car_type || ""}
+                onChange={(e) => handleChange('car_type', e.target.value)}
+                className={`w-full rounded-xl border ${errors.car_type ? 'border-red-500' : 'border-slate-200'} bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
               >
                 <option value="">Select Vehicle Type</option>
-                {vehicleTypes?.map(type => (
-                  <option key={type.id} value={type.id}>{type.name}</option>
-                ))}
+                <option value="Sedan">Sedan</option>
+                <option value="SUV">SUV</option>
+                <option value="Hatchback">Hatchback</option>
+                <option value="Truck">Truck</option>
+                <option value="Van">Van</option>
               </select>
-              {errors.vehicle_type_id && <p className="text-xs text-red-500">{errors.vehicle_type_id}</p>}
+              {errors.car_type && <p className="text-xs text-red-500">{errors.car_type}</p>}
             </div>
 
             {/* Rate Per Day */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
-                Rate Per Day
+                Rate Per Day <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
-                value={formData.rate_per_day}
+                value={formData.rate_per_day || ''}
                 onChange={(e) => handleChange('rate_per_day', parseFloat(e.target.value))}
                 className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
-                placeholder="0"
+                placeholder="2000"
                 min="0"
                 step="0.01"
               />
@@ -345,15 +350,15 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
                 Transmission <span className="text-red-500">*</span>
               </label>
               <select
-                value={formData.transmission || ""}
-                onChange={(e) => handleChange('transmission', e.target.value)}
-                className={`w-full rounded-xl border ${errors.transmission ? 'border-red-500' : 'border-slate-200'} bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
+                value={formData.transmission_type || ""}
+                onChange={(e) => handleChange('transmission_type', e.target.value)}
+                className={`w-full rounded-xl border ${errors.transmission_type ? 'border-red-500' : 'border-slate-200'} bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
               >
                 <option value="">Select Transmission</option>
                 <option value="Automatic">Automatic</option>
                 <option value="Manual">Manual</option>
               </select>
-              {errors.transmission && <p className="text-xs text-red-500">{errors.transmission}</p>}
+              {errors.transmission_type && <p className="text-xs text-red-500">{errors.transmission_type}</p>}
             </div>
 
             {/* Fuel Type */}
@@ -376,6 +381,36 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               {errors.fuel_type && <p className="text-xs text-red-500">{errors.fuel_type}</p>}
             </div>
 
+            {/* Seating Capacity */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Seating Capacity
+              </label>
+              <input
+                type="number"
+                value={formData.seating_capacity || ''}
+                onChange={(e) => handleChange('seating_capacity', parseInt(e.target.value))}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
+                placeholder="5"
+                min="1"
+                max="15"
+              />
+            </div>
+
+            {/* Engine Capacity */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Engine Capacity
+              </label>
+              <input
+                type="text"
+                value={formData.engine_capacity || ''}
+                onChange={(e) => handleChange('engine_capacity', e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
+                placeholder="1800cc"
+              />
+            </div>
+
             {/* Location */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
@@ -383,10 +418,10 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               </label>
               <input
                 type="text"
-                value={formData.location}
+                value={formData.location || ''}
                 onChange={(e) => handleChange('location', e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
-                placeholder="City, Area"
+                placeholder="Lahore"
               />
             </div>
           </div>
@@ -398,7 +433,7 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.air_conditioner}
+                  checked={formData.air_conditioner || false}
                   onChange={(e) => handleChange('air_conditioner', e.target.checked)}
                   className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                 />
@@ -408,7 +443,7 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.android_panel}
+                  checked={formData.android_panel || false}
                   onChange={(e) => handleChange('android_panel', e.target.checked)}
                   className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                 />
@@ -418,7 +453,7 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.sun_roof}
+                  checked={formData.sun_roof || false}
                   onChange={(e) => handleChange('sun_roof', e.target.checked)}
                   className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                 />
@@ -428,7 +463,7 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.front_camera}
+                  checked={formData.front_camera || false}
                   onChange={(e) => handleChange('front_camera', e.target.checked)}
                   className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                 />
@@ -438,7 +473,7 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.rear_camera}
+                  checked={formData.rear_camera || false}
                   onChange={(e) => handleChange('rear_camera', e.target.checked)}
                   className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                 />

@@ -42,7 +42,6 @@ export const authApi = {
 
 export const moduleApi = {
   getAll: async (endpoint, params = {}) => {
-    // Build query string from params
     const queryParams = new URLSearchParams();
     Object.keys(params).forEach(key => {
       if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
@@ -54,12 +53,12 @@ export const moduleApi = {
       ? `${endpoint}?${queryParams.toString()}`
       : endpoint;
     
-    return await api.get(url); // Assuming you have an api instance
+    return await api.get(url);
   },
 
   getOne: (endpoint, id) => api.get(`${endpoint}/${id}`),
+  
   create: async (endpoint, data) => {
-    // If data is FormData, send as multipart/form-data
     if (data instanceof FormData) {
       return await api.post(endpoint, data, {
         headers: {
@@ -67,25 +66,49 @@ export const moduleApi = {
         },
       });
     }
-    // Otherwise send as JSON
     return await api.post(endpoint, data);
   },
+  
   getById: async (endpoint, id) => {
     return await api.get(`${endpoint}/${id}`);
   },
+  
   update: (endpoint, id, data) => api.put(`${endpoint}/${id}`, data),
-  patch: async (endpoint, id, data) => {
-    // If data is FormData, send as multipart/form-data
+  
+  // FIXED: Use PATCH method, not PUT
+  patch: async (endpoint, idOrData, dataOrNull) => {
+    let url, data;
+    
+    // Handle different calling patterns
+    if (typeof idOrData === 'object' || idOrData === undefined) {
+      // Pattern: patch('/bookings/10/status', { status: 'confirmed' })
+      url = endpoint;
+      data = idOrData;
+    } else {
+      // Pattern: patch('/bookings', 10, { status: 'confirmed' })
+      url = `${endpoint}/${idOrData}`;
+      data = dataOrNull;
+    }
+    
     if (data instanceof FormData) {
-      return await api.put(`${endpoint}/${id}`, data, {
+      return await api.patch(url, data, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
     }
-    // Otherwise send as JSON
-    return await api.put(`${endpoint}/${id}`, data);
+    return await api.patch(url, data);
   },
+  
+  // Convenience methods
+  updateStatus: async (bookingId, status) => {
+    return await api.patch(`/bookings/${bookingId}/status`, { status });
+  },
+  
+  cancelBooking: async (bookingId) => {
+    return await api.patch(`/bookings/${bookingId}/cancel`);
+  },
+  
   remove: (endpoint, id) => api.delete(`${endpoint}/${id}`),
 };
 

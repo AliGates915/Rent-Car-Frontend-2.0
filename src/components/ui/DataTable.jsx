@@ -57,24 +57,24 @@ export default function DataTable({
           />
         </div>
 
-        {filters?.length ? (
-          <div className="flex flex-wrap gap-3">
+        {filters && filters.length > 0 && (
+          <div className="flex gap-2">
             {filters.map((filter) => (
               <select
                 key={filter.key}
                 value={filter.value}
-                onChange={(e) => onFilterChange?.(filter.key, e.target.value)}
-                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:bg-white"
+                onChange={(e) => onFilterChange(filter.key, e.target.value)}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
-                {filter.options.map((option) => (
-                  <option key={option.value} value={option.value}>
+                {filter.options.map((option, idx) => (
+                  <option key={idx} value={option.value}>
                     {option.label}
                   </option>
                 ))}
               </select>
             ))}
           </div>
-        ) : null}
+        )}
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200">
@@ -93,51 +93,51 @@ export default function DataTable({
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading
                 ? Array.from({ length: 6 }).map((_, index) => (
-                    <tr key={index}>
-                      {columns.map((column) => (
-                        <td key={column.key} className="px-4 py-4">
-                          <SkeletonBlock className="h-5 w-full" />
-                        </td>
-                      ))}
-                      {actions ? (
-                        <td className="px-4 py-4">
-                          <div className="ml-auto flex max-w-[100px] gap-2">
-                            <SkeletonBlock className="h-9 w-9" />
-                            <SkeletonBlock className="h-9 w-9" />
-                          </div>
-                        </td>
-                      ) : null}
-                    </tr>
-                  ))
+                  <tr key={index}>
+                    {columns.map((column) => (
+                      <td key={column.key} className="px-4 py-4">
+                        <SkeletonBlock className="h-5 w-full" />
+                      </td>
+                    ))}
+                    {actions ? (
+                      <td className="px-4 py-4">
+                        <div className="ml-auto flex max-w-[100px] gap-2">
+                          <SkeletonBlock className="h-9 w-9" />
+                          <SkeletonBlock className="h-9 w-9" />
+                        </div>
+                      </td>
+                    ) : null}
+                  </tr>
+                ))
                 : data.map((row, index) => (
-                    <tr key={row.id || index} className="hover:bg-slate-50/70">
-                      {columns.map((column) => (
-                        <td key={column.key} className="whitespace-nowrap px-4 py-4 text-sm text-slate-700">
-                          {renderCell(column, row)}
-                        </td>
-                      ))}
-                      {actions ? (
-                        <td className="px-4 py-4">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => onEdit?.(row)}
-                              className="rounded-lg border border-slate-200 p-2 text-slate-600 transition hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
-                            >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onDelete?.(row)}
-                              className="rounded-lg border border-slate-200 p-2 text-slate-600 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      ) : null}
-                    </tr>
-                  ))}
+                  <tr key={row.id || index} className="hover:bg-slate-50/70">
+                    {columns.map((column) => (
+                      <td key={column.key} className="whitespace-nowrap px-4 py-4 text-sm text-slate-700">
+                        {renderCell(column, row)}
+                      </td>
+                    ))}
+                    {actions ? (
+                      <td className="px-4 py-4">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => onEdit?.(row)}
+                            className="rounded-lg border border-slate-200 p-2 text-slate-600 transition hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDelete?.(row)}
+                            className="rounded-lg border border-slate-200 p-2 text-slate-600 transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    ) : null}
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>

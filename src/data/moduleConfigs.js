@@ -14,9 +14,9 @@ export const moduleConfigs = {
       { key: 'references', label: 'References' },
     ],
     fields: [
-      { name: 'customer_name', label: 'Full Name', required: true, type: 'text' , maxLength: 20},
-      { name: 'cnic_no', label: 'CNIC', required: true, type: 'number' , maxLength: 13},
-      { name: 'phone_no', label: 'Phone', required: true, type: 'number' , maxLength: 11},
+      { name: 'customer_name', label: 'Full Name', required: true, type: 'text', maxLength: 20 },
+      { name: 'cnic_no', label: 'CNIC', required: true, type: 'number', maxLength: 13 },
+      { name: 'phone_no', label: 'Phone', required: true, type: 'number', maxLength: 11 },
       { name: 'address', label: 'Address', type: 'textarea' },
       { name: 'profession', label: 'Profession', type: 'select', options: ['Driver', 'Passenger', 'Other'] },
       { name: 'balance', label: 'Balance', type: 'number', defaultValue: 0 },
@@ -42,10 +42,10 @@ export const moduleConfigs = {
       { key: 'documents', label: 'Documents' },
     ],
     fields: [
-      { name: 'registration_no', label: 'Registration No', required: true, type: 'text' , maxLength: 10},
-      {name: 'owner_id', label : 'owner_id',  type: 'select'},
+      { name: 'registration_no', label: 'Registration No', required: true, type: 'text', maxLength: 10 },
+      { name: 'owner_id', label: 'owner_id', type: 'select' },
       { name: 'car_make', label: 'Make', required: true },
-      { name: 'car_model', label: 'Model', required: true, type: 'text' , maxLength: 20},
+      { name: 'car_model', label: 'Model', required: true, type: 'text', maxLength: 20 },
       { name: 'year_of_model', label: 'Year', type: 'number' },
       { name: 'car_type', label: 'Vehicle Type', type: 'select', options: ['Sedan', 'SUV', 'APV', 'Hatchback', 'Luxury'] },
       { name: 'rate_per_day', label: 'Rate / Day', type: 'number', required: true, defaultValue: 0 },
@@ -58,7 +58,7 @@ export const moduleConfigs = {
       { name: 'sunroof', label: 'Sun Roof', type: 'checkbox' },
       { name: 'front_camera', label: 'Front Camera', type: 'checkbox' },
       { name: 'rear_camera', label: 'Rear Camera', type: 'checkbox' },
-      
+
     ],
     columns: [
       { key: 'registration_no', label: 'Registration' },
@@ -69,83 +69,91 @@ export const moduleConfigs = {
       { key: 'status', label: 'Status', type: 'status' },
     ],
     filters: [
-      { key: 'status', label: 'Status', options: [
-        { value: '', label: 'All Status' },
-        { value: 'available', label: 'Available' },
-        { value: 'on_rent', label: 'On Rent' },
-        { value: 'maintenance', label: 'Maintenance' },
-        { value: 'inactive', label: 'Inactive' }
-      ] },
-      { key: 'car_type', label: 'Vehicle Type', options: [
-        { value: '', label: 'All Types' },
-        { value: 'Sedan', label: 'Sedan' },
-        { value: 'SUV', label: 'SUV' },
-        { value: 'APV', label: 'APV' },
-        { value: 'Hatchback', label: 'Hatchback' },
-        { value: 'Luxury', label: 'Luxury' }
-      ] },
-      { key: 'fuel_type', label: 'Fuel Type', options: [
-        { value: '', label: 'All Fuels' },
-        { value: 'Petrol', label: 'Petrol' },
-        { value: 'Diesel', label: 'Diesel' },
-        { value: 'Hybrid', label: 'Hybrid' },
-        { value: 'Electric', label: 'Electric' }
-      ] }
+      {
+        key: 'status', label: 'Status', options: [
+          { value: '', label: 'All Status' },
+          { value: 'available', label: 'Available' },
+          { value: 'on_rent', label: 'On Rent' },
+          { value: 'maintenance', label: 'Maintenance' },
+          { value: 'inactive', label: 'Inactive' }
+        ]
+      },
+      {
+        key: 'car_type', label: 'Vehicle Type', options: [
+          { value: '', label: 'All Types' },
+          { value: 'Sedan', label: 'Sedan' },
+          { value: 'SUV', label: 'SUV' },
+          { value: 'APV', label: 'APV' },
+          { value: 'Hatchback', label: 'Hatchback' },
+          { value: 'Luxury', label: 'Luxury' }
+        ]
+      },
+      {
+        key: 'fuel_type', label: 'Fuel Type', options: [
+          { value: '', label: 'All Fuels' },
+          { value: 'Petrol', label: 'Petrol' },
+          { value: 'Diesel', label: 'Diesel' },
+          { value: 'Hybrid', label: 'Hybrid' },
+          { value: 'Electric', label: 'Electric' }
+        ]
+      }
     ],
   },
-owners: {
-  title: 'Owners',
-  endpoint: '/owners',
-  tabs: [
-    { key: 'list', label: 'List' },
-    { key: 'form', label: 'Form' },
-    { key: 'documents', label: 'Documents' },
-  ],
-  fields: [
-    { name: 'owner_name', label: 'Owner Name', required: true, type: 'text' },
-    { name: 'father_name', label: 'Father Name', type: 'text' },
-    { name: 'cnic_no', label: 'CNIC Number', type: 'text', maxLength: 14 },
-    { name: 'phone_no', label: 'Phone Number', required: true, type: 'number' },
-    { name: 'alternate_phone', label: 'Alternate Phone', type: 'tel' },
-    { name: 'address', label: 'Address', type: 'textarea' },
-    { name: 'city', label: 'City', type: 'text' },
-    { name: 'notes', label: 'Notes', type: 'textarea' },
-    { name: 'status', label: 'Status', type: 'select', options: ['active', 'inactive'], defaultValue: 'active' },
-  ],
-  columns: [
-    { key: 'owner_name', label: 'Owner Name' },
-    { key: 'phone_no', label: 'Phone' },
-    { key: 'cnic_no', label: 'CNIC' },
-    { key: 'city', label: 'City' },
-    { key: 'status', label: 'Status', type: 'status' },
-  ],
-  filters: [
-    { key: 'status', label: 'Status', options: [
-      { value: '', label: 'All Status' },
-      { value: 'active', label: 'Active' },
-      { value: 'inactive', label: 'Inactive' }
-    ] }
-  ],
-},
+  owners: {
+    title: 'Owners',
+    endpoint: '/owners',
+    tabs: [
+      { key: 'list', label: 'List' },
+      { key: 'form', label: 'Form' },
+      { key: 'documents', label: 'Documents' },
+    ],
+    fields: [
+      { name: 'owner_name', label: 'Owner Name', required: true, type: 'text' },
+      { name: 'father_name', label: 'Father Name', type: 'text' },
+      { name: 'cnic_no', label: 'CNIC Number', type: 'text', maxLength: 14 },
+      { name: 'phone_no', label: 'Phone Number', required: true, type: 'number' },
+      { name: 'alternate_phone', label: 'Alternate Phone', type: 'tel' },
+      { name: 'address', label: 'Address', type: 'textarea' },
+      { name: 'city', label: 'City', type: 'text' },
+      { name: 'notes', label: 'Notes', type: 'textarea' },
+      { name: 'status', label: 'Status', type: 'select', options: ['active', 'inactive'], defaultValue: 'active' },
+    ],
+    columns: [
+      { key: 'owner_name', label: 'Owner Name' },
+      { key: 'phone_no', label: 'Phone' },
+      { key: 'cnic_no', label: 'CNIC' },
+      { key: 'city', label: 'City' },
+      { key: 'status', label: 'Status', type: 'status' },
+    ],
+    filters: [
+      {
+        key: 'status', label: 'Status', options: [
+          { value: '', label: 'All Status' },
+          { value: 'active', label: 'Active' },
+          { value: 'inactive', label: 'Inactive' }
+        ]
+      }
+    ],
+  },
 
 
-setup: {
-  title: 'Setup Modules',
-  endpoint: '/setup',
-  isMultiType: true,
-  setupTypes: [
-    { key: 'vehicle-type', label: 'Vehicle Types', endpoint: '/vehicle-types' },
-    { key: 'maintenance-type', label: 'Maintenance Types', endpoint: '/maintenance-types' },
-    { key: 'rent-type', label: 'Rent Types', endpoint: '/rent-types' },
-    { key: 'accessory-type', label: 'Accessory Types', endpoint: '/accessory-types' }
-  ],
-  tabs: [
-    { key: 'vehicle-type', label: 'Vehicle Types' },
-    { key: 'maintenance-type', label: 'Maintenance Types' },
-    { key: 'rent-type', label: 'Rent Types' },
-    { key: 'accessory-type', label: 'Accessory Types' }
-  ]
-},
+  setup: {
+    title: 'Setup Modules',
+    endpoint: '/setup',
+    isMultiType: true,
+    setupTypes: [
+      { key: 'vehicle-type', label: 'Vehicle Types', endpoint: '/vehicle-types' },
+      { key: 'maintenance-type', label: 'Maintenance Types', endpoint: '/maintenance-types' },
+      { key: 'rent-type', label: 'Rent Types', endpoint: '/rent-types' },
+      { key: 'accessory-type', label: 'Accessory Types', endpoint: '/accessory-types' }
+    ],
+    tabs: [
+      { key: 'vehicle-type', label: 'Vehicle Types' },
+      { key: 'maintenance-type', label: 'Maintenance Types' },
+      { key: 'rent-type', label: 'Rent Types' },
+      { key: 'accessory-type', label: 'Accessory Types' }
+    ]
+  },
 
 
   bookings: {
@@ -154,11 +162,12 @@ setup: {
     tabs: [
       { key: 'list', label: 'List' },
       { key: 'form', label: 'Form' },
+      { key: 'calendar', label: 'Calendar' },
       { key: 'history', label: 'History' },
     ],
     fields: [
-      { name: 'customer_id', label: 'Customer ID', required: true },
-      { name: 'vehicle_id', label: 'Vehicle ID', required: true },
+      { name: 'customer_id', label: 'Customer', required: true, type: 'select' },
+      { name: 'vehicle_id', label: 'Vehicle', required: true, type: 'select' },
       { name: 'date_from', label: 'Start Date', type: 'date', required: true },
       { name: 'date_to', label: 'End Date', type: 'date', required: true },
       { name: 'pickup_city', label: 'Pickup City', required: true },
@@ -170,38 +179,22 @@ setup: {
     ],
     columns: [
       { key: 'booking_code', label: 'Booking Code' },
-      { key: 'customer_id', label: 'Customer ID' },
-      { key: 'vehicle_id', label: 'Vehicle ID' },
+      { key: 'customer_name', label: 'Customer' },
+      { key: 'vehicle_info', label: 'Vehicle' },
       { key: 'date_from', label: 'Start', type: 'date' },
       { key: 'date_to', label: 'End', type: 'date' },
+      { key: 'total_days', label: 'Days' },
+      { key: 'total_amount', label: 'Total', type: 'currency' },
       { key: 'payment_status', label: 'Payment', type: 'status' },
       { key: 'status', label: 'Status', type: 'status' },
     ],
-    filters: [{ key: 'status', label: 'Status', options: ['', 'pending', 'confirmed', 'ongoing', 'completed', 'cancelled'] }],
-  },
-  handover: {
-    title: 'Vehicle Handover',
-    endpoint: '/handover',
-    tabs: [
-      { key: 'list', label: 'List' },
-      { key: 'form', label: 'Form' },
-    ],
-    fields: [
-      { name: 'booking_id', label: 'Booking ID', required: true },
-      { name: 'vehicle_id', label: 'Vehicle ID', required: true },
-      { name: 'handover_date', label: 'Handover Date', type: 'date', required: true },
-      { name: 'odometer_out', label: 'Odometer Out', type: 'number' },
-      { name: 'fuel_level_out', label: 'Fuel Level' },
-      { name: 'notes', label: 'Notes', type: 'textarea' },
-    ],
-    columns: [
-      { key: 'booking_id', label: 'Booking ID' },
-      { key: 'vehicle_id', label: 'Vehicle ID' },
-      { key: 'handover_date', label: 'Date', type: 'date' },
-      { key: 'fuel_level_out', label: 'Fuel' },
-      { key: 'odometer_out', label: 'Odometer' },
+    filters: [
+      { key: 'status', label: 'Status', options: ['', 'pending', 'confirmed', 'ongoing', 'completed', 'cancelled'] },
+      { key: 'payment_status', label: 'Payment', options: ['', 'unpaid', 'partial', 'paid'] }
     ],
   },
+
+
   return: {
     title: 'Vehicle Return',
     endpoint: '/return',
@@ -210,21 +203,64 @@ setup: {
       { key: 'form', label: 'Form' },
     ],
     fields: [
-      { name: 'booking_id', label: 'Booking ID', required: true },
-      { name: 'return_date', label: 'Return Date', type: 'date', required: true },
-      { name: 'odometer_in', label: 'Odometer In', type: 'number' },
-      { name: 'fuel_level_in', label: 'Fuel Level In' },
-      { name: 'late_hours', label: 'Late Hours', type: 'number' },
+      { name: 'booking_id', label: 'Booking', required: true, type: 'select' },
+      { name: 'return_date', label: 'Return Date', type: 'datetime-local', required: true },
+      { name: 'odometer_in', label: 'Odometer In', type: 'number', required: true },
+      { name: 'fuel_level_in', label: 'Fuel Level', required: true },
+      { name: 'extra_charges', label: 'Extra Charges', type: 'number' },
+      { name: 'damage_charges', label: 'Damage Charges', type: 'number' },
       { name: 'damage_notes', label: 'Damage Notes', type: 'textarea' },
+      { name: 'notes', label: 'Notes', type: 'textarea' },
+      { name: 'returned_by', label: 'Returned By' },
     ],
     columns: [
+      { key: 'id', label: 'ID' },
       { key: 'booking_id', label: 'Booking ID' },
       { key: 'return_date', label: 'Return Date', type: 'date' },
-      { key: 'fuel_level_in', label: 'Fuel In' },
-      { key: 'late_hours', label: 'Late Hours' },
-      { key: 'odometer_in', label: 'Odometer In' },
+      { key: 'odometer_in', label: 'Odometer' },
+      { key: 'fuel_level_in', label: 'Fuel' },
+      { key: 'final_amount', label: 'Final Amount', type: 'currency' },
+      { key: 'balance_amount', label: 'Balance', type: 'currency' },
+    ],
+    filters: [
+      { key: 'booking_id', label: 'Booking ID', options: [''] }, // Add options array
+      { key: 'status', label: 'Status', options: ['', 'completed'] }
     ],
   },
+
+  handover: {
+    title: 'Vehicle Handover',
+    endpoint: '/handover',
+    tabs: [
+      { key: 'list', label: 'List' },
+      { key: 'form', label: 'Form' },
+    ],
+    fields: [
+      { name: 'booking_id', label: 'Booking', required: true, type: 'select' },
+      { name: 'vehicle_id', label: 'Vehicle', required: true, type: 'select' },
+      { name: 'handed_over_by', label: 'Handed Over By', required: true },
+      { name: 'handover_datetime', label: 'Handover Date', type: 'datetime-local' },
+      { name: 'km_out', label: 'Odometer Out', type: 'number', required: true },
+      { name: 'fuel_level_out', label: 'Fuel Level', required: true },
+      { name: 'vehicle_out_notes', label: 'Notes', type: 'textarea' },
+    ],
+    columns: [
+      { key: 'id', label: 'ID' },
+      { key: 'booking_id', label: 'Booking ID' },
+      { key: 'car_make', label: 'Make' },
+      { key: 'car_model', label: 'Model' },
+      { key: 'handover_datetime', label: 'Date', type: 'date' },
+      { key: 'km_out', label: 'Odometer' },
+      { key: 'fuel_level_out', label: 'Fuel' },
+      { key: 'handed_over_by', label: 'Handed By' },
+    ],
+    filters: [
+      { key: 'status', label: 'Status', options: ['', 'ongoing', 'completed'] }
+    ],
+  },
+
+
+
   payments: {
     title: 'Payments',
     endpoint: '/payments',
@@ -324,7 +360,7 @@ setup: {
     ],
     filters: [{ key: 'status', label: 'Status', options: ['', 'pending', 'completed', 'overdue'] }],
   },
-  
+
   'owner-earnings': {
     title: 'Owner Earnings',
     endpoint: '/owner-earnings',
@@ -345,7 +381,7 @@ setup: {
       { key: 'status', label: 'Status', type: 'status' },
     ],
   },
-  
+
   reports: {
     title: 'Reports',
     endpoint: '/reports',
