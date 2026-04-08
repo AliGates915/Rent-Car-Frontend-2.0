@@ -30,36 +30,30 @@ import HandoverListView from '../components/handover/HandoverListView';
 import ReturnForm from '../components/return/ReturnForm';
 import ReturnListView from '../components/return/ReturnListView';
 
-// frontend/src/pages/ModulePage.jsx
-
 function buildFilters(config, filterValues) {
   if (!config?.filters || !Array.isArray(config.filters)) {
     return [];
   }
 
   return config.filters
-    .filter(filter => filter && filter.key) // Filter out invalid filters
+    .filter(filter => filter && filter.key)
     .map((filter) => {
-      // Handle options safely
       let options = [];
       
       if (filter.options && Array.isArray(filter.options)) {
         options = filter.options.map(opt => {
-          // If option is already an object with label/value
           if (typeof opt === 'object' && opt !== null) {
             return {
               label: opt.label || opt.value || `All ${filter.label}`,
               value: opt.value || opt.label || ''
             };
           }
-          // If option is a primitive value
           return {
             label: opt === '' || opt === null ? `All ${filter.label}` : String(opt),
             value: opt === null || opt === undefined ? '' : opt
           };
         });
       } else {
-        // Default option when no options provided
         options = [{ 
           label: `All ${filter.label || filter.key}`, 
           value: '' 
@@ -207,8 +201,6 @@ function RegularModulePage({ moduleKey, config }) {
             />
           );
         }
-
-
         if (moduleKey === 'handover') {
           return (
             <HandoverForm
@@ -248,6 +240,7 @@ function RegularModulePage({ moduleKey, config }) {
             />
           );
         }
+        
         if (moduleKey === 'bookings') {
           return (
             <BookingListView
@@ -273,9 +266,61 @@ function RegularModulePage({ moduleKey, config }) {
             />
           );
         }
+        
+        if (moduleKey === 'handover') {
+          return (
+            <HandoverListView
+              handovers={data}
+              loading={loading}
+              search={search}
+              onSearch={(val) => {
+                setSearch(val);
+                setPage(1);
+              }}
+              filters={buildFilters(config, filterValues)}
+              filterValues={filterValues}
+              onFilterChange={(key, value) => {
+                setPage(1);
+                setFilterValues((prev) => ({ ...prev, [key]: value }));
+              }}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              page={page}
+              total={meta.total}
+              limit={meta.limit}
+              onPageChange={setPage}
+            />
+          );
+        }
+        
+        if (moduleKey === 'return') {
+          return (
+            <ReturnListView
+            returns={data}
+            loading={loading}
+            search={search}
+            onSearch={setSearch}
+            filters={buildFilters(config, filterValues)}
+            filterValues={filterValues}
+            onFilterChange={(key, value) => {
+              setPage(1);
+              setFilterValues((prev) => ({ ...prev, [key]: value }));
+            }}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            page={page}
+            total={meta.total}
+            limit={meta.limit}
+            onPageChange={setPage}
+            // summary={summary} 
+          />
+          );
+        }
+        
         if (moduleKey === 'owner-earnings') {
           return <OwnerEarningsManager />;
         }
+        
         // Default DataTable for other modules
         return (
           <DataTable
@@ -305,59 +350,7 @@ function RegularModulePage({ moduleKey, config }) {
         if (moduleKey === 'bookings') {
           return <BookingHistory />;
         }
-
-        if (moduleKey === 'handover') {
-          return (
-            <HandoverListView
-              handovers={data}
-              loading={loading}
-              search={search}
-              onSearch={(val) => {
-                setSearch(val);
-                setPage(1);
-              }}
-              filters={buildFilters(config, filterValues)}
-              filterValues={filterValues}
-              onFilterChange={(key, value) => {
-                setPage(1);
-                setFilterValues((prev) => ({ ...prev, [key]: value }));
-              }}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              page={page}
-              total={meta.total}
-              limit={meta.limit}
-              onPageChange={setPage}
-            />
-          );
-        }
-        if (moduleKey === 'return') {
-          return (
-            <ReturnListView
-              returns={data}
-              loading={loading}
-              search={search}
-              onSearch={(val) => {
-                setSearch(val);
-                setPage(1);
-              }}
-              filters={buildFilters(config, filterValues)}
-              filterValues={filterValues}
-              onFilterChange={(key, value) => {
-                setPage(1);
-                setFilterValues((prev) => ({ ...prev, [key]: value }));
-              }}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              page={page}
-              total={meta.total}
-              limit={meta.limit}
-              onPageChange={setPage}
-            />
-          );
-        }
         
-
         return (
           <DataTable
             title={`${config.title} History`}

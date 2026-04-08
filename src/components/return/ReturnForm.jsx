@@ -12,18 +12,17 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [calculations, setCalculations] = useState({
     base_amount: 0,
+    total_paid: 0,
     extra_charges: 0,
     damage_charges: 0,
-    total_paid: 0,
-    final_amount: 0,
-    balance_amount: 0,
     late_days: 0,
-    late_charges: 0
+    late_charges: 0,
+    final_amount: 0,
+    balance_amount: 0
   });
-  const [payments, setPayments] = useState([]);
 
   // Fetch ongoing bookings for selection
-  const { data: ongoingBookings } = useFetch('/bookings?status=ongoing');
+  const { data: ongoingBookings, refetch: refetchBookings } = useFetch('/bookings?status=ongoing');
 
   // Fetch booking details when selected
   const fetchBookingDetails = async (bookingId) => {
@@ -35,33 +34,49 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
       const booking = response.data;
       setSelectedBooking(booking);
       
-      // Fetch payments for this booking
-      const paymentsResponse = await moduleApi.getAll(`/payments/booking`, { booking_id: bookingId });
-      setPayments(paymentsResponse.data || []);
-      
-      // Calculate total paid
-      const totalPaid = (paymentsResponse.data || [])
-        .filter(p => p.payment_type === 'payment' || p.payment_type === 'advance')
-        .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+      // Calculate total paid from booking data
+      const advanceAmount = parseFloat(booking.advance_amount || 0);
+      const paidAmount = parseFloat(booking.paid_amount || 0);
+      const totalPaid = advanceAmount + paidAmount;
       
       // Calculate late days
       const returnDate = formData.return_date ? new Date(formData.return_date) : new Date();
       const endDate = new Date(booking.date_to);
-      const lateDays = Math.max(0, Math.ceil((returnDate - endDate) / (1000 * 60 * 60 * 24)));
       
-      // Calculate late charges (e.g., daily rate * 1.5 for late days)
-      const dailyRate = parseFloat(booking.rate_per_day || 0);
-      const lateCharges = lateDays * dailyRate * 1.5;
+      // Normalize dates (remove time)
+      returnDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
       
-      setCalculations(prev => ({
-        ...prev,
-        base_amount: parseFloat(booking.total_amount || 0),
+      // Calculate late days only if return date is after end date
+      let lateDays = 0;
+      let lateCharges = 0;
+      
+      if (returnDate > endDate) {
+        const diffTime = returnDate - endDate;
+        lateDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const dailyRate = parseFloat(booking.rate_per_day || 0);
+        lateCharges = lateDays * dailyRate * 1.5; // 50% extra for late return
+      }
+      
+      // Get extra and damage charges from form data
+      const extraCharges = parseFloat(formData.extra_charges || 0);
+      const damageCharges = parseFloat(formData.damage_charges || 0);
+      
+      // Calculate final amount
+      const baseAmount = parseFloat(booking.total_amount || 0);
+      const finalAmount = baseAmount + extraCharges + damageCharges + lateCharges;
+      const balanceAmount = finalAmount - totalPaid;
+      
+      setCalculations({
+        base_amount: baseAmount,
         total_paid: totalPaid,
+        extra_charges: extraCharges,
+        damage_charges: damageCharges,
         late_days: lateDays,
         late_charges: lateCharges,
-        final_amount: parseFloat(booking.total_amount || 0) + parseFloat(formData.extra_charges || 0) + parseFloat(formData.damage_charges || 0) + lateCharges,
-        balance_amount: (parseFloat(booking.total_amount || 0) + parseFloat(formData.extra_charges || 0) + parseFloat(formData.damage_charges || 0) + lateCharges) - totalPaid
-      }));
+        final_amount: finalAmount,
+        balance_amount: balanceAmount
+      });
       
     } catch (error) {
       console.error('Failed to fetch booking details:', error);
@@ -105,51 +120,62 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
       await fetchBookingDetails(bookingId);
     } else {
       setSelectedBooking(null);
-      setPayments([]);
+      setCalculations({
+        base_amount: 0,
+        total_paid: 0,
+        extra_charges: 0,
+        damage_charges: 0,
+        late_days: 0,
+        late_charges: 0,
+        final_amount: 0,
+        balance_amount: 0
+      });
     }
   };
 
   const handleChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Recalculate when extra_charges or damage_charges change
+    // Recalculate when relevant fields change
     if (name === 'extra_charges' || name === 'damage_charges' || name === 'return_date') {
-      const extra = name === 'extra_charges' ? parseFloat(value || 0) : parseFloat(formData.extra_charges || 0);
-      const damage = name === 'damage_charges' ? parseFloat(value || 0) : parseFloat(formData.damage_charges || 0);
-      
-      // Recalculate late days if return date changed
-      let lateDays = calculations.late_days;
-      let lateCharges = calculations.late_charges;
-      if (name === 'return_date' && selectedBooking) {
-        const returnDate = new Date(value);
-        const endDate = new Date(selectedBooking.date_to);
-      
-        // 🔥 Normalize (time hatao)
-        returnDate.setHours(0, 0, 0, 0);
-        endDate.setHours(0, 0, 0, 0);
-      
-        // 🔥 Difference in days
-        const diffDays = (returnDate - endDate) / (1000 * 60 * 60 * 24);
-      
-        // 🔥 Late only AFTER end date
-        const lateDays = diffDays > 0 ? Math.floor(diffDays) : 0;
-      
-        const dailyRate = parseFloat(selectedBooking.rate_per_day || 0);
-        const lateCharges = lateDays * dailyRate * 1.5;
-      
-        console.log({ lateDays, lateCharges });
-      }
-
-      
-      setCalculations(prev => ({
-        ...prev,
-        extra_charges: extra,
-        damage_charges: damage,
-        late_days: lateDays,
-        late_charges: lateCharges,
-        final_amount: calculations.base_amount + extra + damage + lateCharges,
-        balance_amount: (calculations.base_amount + extra + damage + lateCharges) - calculations.total_paid
-      }));
+      setTimeout(() => {
+        if (selectedBooking) {
+          const extraCharges = name === 'extra_charges' ? parseFloat(value || 0) : parseFloat(formData.extra_charges || 0);
+          const damageCharges = name === 'damage_charges' ? parseFloat(value || 0) : parseFloat(formData.damage_charges || 0);
+          
+          let returnDate = name === 'return_date' ? new Date(value) : new Date(formData.return_date);
+          const endDate = new Date(selectedBooking.date_to);
+          
+          // Normalize dates
+          returnDate.setHours(0, 0, 0, 0);
+          endDate.setHours(0, 0, 0, 0);
+          
+          // Calculate late days
+          let lateDays = 0;
+          let lateCharges = 0;
+          
+          if (returnDate > endDate) {
+            const diffTime = returnDate - endDate;
+            lateDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const dailyRate = parseFloat(selectedBooking.rate_per_day || 0);
+            lateCharges = lateDays * dailyRate * 1.5;
+          }
+          
+          const baseAmount = parseFloat(selectedBooking.total_amount || 0);
+          const finalAmount = baseAmount + extraCharges + damageCharges + lateCharges;
+          const balanceAmount = finalAmount - calculations.total_paid;
+          
+          setCalculations(prev => ({
+            ...prev,
+            extra_charges: extraCharges,
+            damage_charges: damageCharges,
+            late_days: lateDays,
+            late_charges: lateCharges,
+            final_amount: finalAmount,
+            balance_amount: balanceAmount
+          }));
+        }
+      }, 100);
     }
     
     if (errors[name]) {
@@ -214,7 +240,13 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
         damage_charges: parseFloat(formData.damage_charges || 0),
         damage_notes: formData.damage_notes || null,
         notes: formData.notes || null,
-        returned_by: formData.returned_by || null
+        returned_by: formData.returned_by || null,
+        // Calculate final amount and balance
+        total_days: selectedBooking?.total_days,
+        late_days: calculations.late_days,
+        final_amount: calculations.final_amount,
+        balance_amount: calculations.balance_amount > 0 ? calculations.balance_amount : 0,
+        paid_amount: calculations.total_paid
       };
 
       console.log('Submitting return data:', submitData);
@@ -225,6 +257,9 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
       } else {
         await moduleApi.create('/return', submitData);
         toast.success('Vehicle returned successfully');
+        
+        // Update booking status to completed
+        await moduleApi.patch(`/bookings/${formData.booking_id}/status`, { status: 'completed' });
       }
 
       onSuccess();
@@ -372,33 +407,27 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
               <label className="block text-sm font-medium text-slate-700">
                 Damage Notes
               </label>
-              <div className="relative">
-                <FileText className="absolute left-3 top-3 text-slate-400" size={18} />
-                <textarea
-                  value={formData.damage_notes || ''}
-                  onChange={(e) => handleChange('damage_notes', e.target.value)}
-                  rows={2}
-                  className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
-                  placeholder="Describe any damages to the vehicle..."
-                />
-              </div>
+              <textarea
+                value={formData.damage_notes || ''}
+                onChange={(e) => handleChange('damage_notes', e.target.value)}
+                rows={2}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
+                placeholder="Describe any damages to the vehicle..."
+              />
             </div>
 
-            {/* General Notes */}
+            {/* Return Notes */}
             <div className="space-y-2 md:col-span-2">
               <label className="block text-sm font-medium text-slate-700">
                 Return Notes
               </label>
-              <div className="relative">
-                <FileText className="absolute left-3 top-3 text-slate-400" size={18} />
-                <textarea
-                  value={formData.notes || ''}
-                  onChange={(e) => handleChange('notes', e.target.value)}
-                  rows={2}
-                  className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
-                  placeholder="Additional notes about the return..."
-                />
-              </div>
+              <textarea
+                value={formData.notes || ''}
+                onChange={(e) => handleChange('notes', e.target.value)}
+                rows={2}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
+                placeholder="Additional notes about the return..."
+              />
             </div>
 
             {/* Returned By */}
@@ -450,45 +479,47 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
               {/* Payment Summary */}
               <div className="p-4 bg-green-50 rounded-xl border border-green-100">
                 <h3 className="text-sm font-semibold text-green-900 mb-3">Payment Summary</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                   <div>
                     <span className="text-green-700">Base Amount:</span>
                     <div className="font-semibold text-green-900">Rs. {calculations.base_amount.toLocaleString()}</div>
                   </div>
                   <div>
-                    <span className="text-green-700">Total Paid:</span>
-                    <div className="font-semibold text-green-900">Rs. {calculations.total_paid.toLocaleString()}</div>
+                    <span className="text-green-700">Advance Paid:</span>
+                    <div className="font-semibold text-green-900">Rs. {parseFloat(selectedBooking.advance_amount || 0).toLocaleString()}</div>
                   </div>
                   <div>
-                    <span className="text-green-700">Remaining:</span>
-                    <div className="font-semibold text-green-900">Rs. {(calculations.base_amount - calculations.advance_amount).toLocaleString()}</div>
+                    <span className="text-green-700">Security Paid:</span>
+                    <div className="font-semibold text-green-900">Rs. {parseFloat(selectedBooking.paid_amount || 0).toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <span className="text-green-700">Total Paid:</span>
+                    <div className="font-semibold text-green-900">Rs. {calculations.total_paid.toLocaleString()}</div>
                   </div>
                 </div>
               </div>
 
-              {/* Extra Charges Summary */}
+              {/* Additional Charges */}
               {(calculations.late_days > 0 || calculations.extra_charges > 0 || calculations.damage_charges > 0) && (
                 <div className="p-4 bg-yellow-50 rounded-xl border border-yellow-100">
                   <h3 className="text-sm font-semibold text-yellow-900 mb-3">Additional Charges</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div className="space-y-2 text-sm">
                     {calculations.late_days > 0 && (
-                      <div>
-                        <span className="text-yellow-700">Late Return:</span>
-                        <div className="font-semibold text-yellow-900">
-                          {calculations.late_days} days × Rs. {parseFloat(selectedBooking.rate_per_day || 0) * 1.5}/day = Rs. {calculations.late_charges.toLocaleString()}
-                        </div>
+                      <div className="flex justify-between">
+                        <span className="text-yellow-700">Late Return ({calculations.late_days} days):</span>
+                        <span className="font-semibold text-yellow-900">Rs. {calculations.late_charges.toLocaleString()}</span>
                       </div>
                     )}
                     {calculations.extra_charges > 0 && (
-                      <div>
+                      <div className="flex justify-between">
                         <span className="text-yellow-700">Extra Charges:</span>
-                        <div className="font-semibold text-yellow-900">Rs. {calculations.extra_charges.toLocaleString()}</div>
+                        <span className="font-semibold text-yellow-900">Rs. {calculations.extra_charges.toLocaleString()}</span>
                       </div>
                     )}
                     {calculations.damage_charges > 0 && (
-                      <div>
+                      <div className="flex justify-between">
                         <span className="text-yellow-700">Damage Charges:</span>
-                        <div className="font-semibold text-yellow-900">Rs. {calculations.damage_charges.toLocaleString()}</div>
+                        <span className="font-semibold text-yellow-900">Rs. {calculations.damage_charges.toLocaleString()}</span>
                       </div>
                     )}
                   </div>
@@ -497,20 +528,24 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
 
               {/* Final Calculation */}
               <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
-                <h3 className="text-sm font-semibold text-purple-900 mb-3">Final Calculation</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                <h3 className="text-sm font-semibold text-purple-900 mb-3">Final Settlement</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <span className="text-purple-700">Final Amount:</span>
-                    <div className="font-bold text-lg text-purple-900">Rs. {calculations.final_amount.toLocaleString()}</div>
+                    <div className="font-bold text-xl text-purple-900">Rs. {calculations.final_amount.toLocaleString()}</div>
+                    <div className="text-xs text-purple-600 mt-1">
+                      Base + Late + Extra + Damage
+                    </div>
                   </div>
                   <div>
                     <span className="text-purple-700">Total Paid:</span>
-                    <div className="font-semibold text-purple-900">Rs. {calculations.total_paid.toLocaleString()}</div>
+                    <div className="font-bold text-xl text-purple-900">Rs. {calculations.total_paid.toLocaleString()}</div>
                   </div>
                   <div>
-                    <span className="text-purple-700">Balance Due:</span>
-                    <div className={`font-bold text-lg ${calculations.balance_amount > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      Rs. {calculations.balance_amount.toLocaleString()}
+                    <span className="text-purple-700">Balance:</span>
+                    <div className={`font-bold text-xl ${calculations.balance_amount > 0 ? 'text-red-600' : calculations.balance_amount < 0 ? 'text-green-600' : 'text-purple-900'}`}>
+                      {calculations.balance_amount > 0 ? 'Due: ' : calculations.balance_amount < 0 ? 'Refund: ' : 'Settled: '}
+                      Rs. {Math.abs(calculations.balance_amount).toLocaleString()}
                     </div>
                   </div>
                 </div>

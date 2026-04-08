@@ -18,7 +18,8 @@ export default function BookingListView({
   page,
   total,
   limit,
-  onPageChange 
+  onPageChange,
+  refreshData
 }) {
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [showStatusMenu, setShowStatusMenu] = useState(null);
@@ -26,14 +27,39 @@ export default function BookingListView({
   const statusOptions = [
     { value: 'pending', label: 'Pending', color: 'warning' },
     { value: 'confirmed', label: 'Confirmed', color: 'success' },
-    { value: 'ongoing', label: 'Ongoing', color: 'info' },
-    { value: 'completed', label: 'Completed', color: 'secondary' },
     { value: 'cancelled', label: 'Cancelled', color: 'error' }
   ];
 
+  // Helper function to format date without timezone offset
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth();
+    const day = date.getUTCDate();
+    return new Date(year, month, day).toLocaleDateString();
+  };
+
+  // Define valid status transitions (only pending, confirmed, cancelled)
+  const getValidTransitions = (currentStatus) => {
+    switch(currentStatus?.toLowerCase()) {
+      case 'pending':
+        return ['confirmed', 'cancelled']; // Can confirm or cancel from pending
+      case 'confirmed':
+        return ['cancelled']; // Can only cancel from confirmed (ongoing will be handled by handover)
+      case 'ongoing':
+        return []; // No status changes from UI - will be handled by handover feature
+      case 'completed':
+        return []; // Terminal state - no changes
+      case 'cancelled':
+        return []; // Terminal state - no changes
+      default:
+        return ['confirmed', 'cancelled'];
+    }
+  };
+
   const handleStatusUpdate = async (bookingId, newStatus) => {
     const statusString = String(newStatus);
-    console.log("status: ", statusString);
     
     setUpdatingStatus(bookingId);
     setShowStatusMenu(null);
@@ -47,8 +73,9 @@ export default function BookingListView({
         toast.success(`Booking ${statusString} successfully`);
       }
       
-      // Refresh the list
-      if (onEdit) onEdit({ refresh: true });
+      if (refreshData) {
+        await refreshData();
+      }
       
     } catch (error) {
       console.error('Status update error:', error);
@@ -117,8 +144,8 @@ export default function BookingListView({
       label: 'Duration',
       render: (row) => (
         <div className="text-sm">
-          <div>{new Date(row.date_from).toLocaleDateString()}</div>
-          <div className="text-xs text-slate-500">to {new Date(row.date_to).toLocaleDateString()}</div>
+          <div>{formatDisplayDate(row.date_from)}</div>
+          <div className="text-xs text-slate-500">to {formatDisplayDate(row.date_to)}</div>
           <div className="text-xs font-medium text-blue-600">{row.total_days} days</div>
         </div>
       )
@@ -146,71 +173,84 @@ export default function BookingListView({
     { 
       key: 'status', 
       label: 'Booking Status',
-      render: (row) => (
-        <div className="relative">
-          {updatingStatus === row.id ? (
-            <div className="flex items-center gap-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
-              <span className="text-xs text-slate-500">Updating...</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getBookingStatusColor(row.status)}`}>
-                {row.status ? row.status.toUpperCase() : 'PENDING'}
-              </span>
-              
-              {/* Only show dropdown for non-terminal states */}
-              {row.status !== 'cancelled' && row.status !== 'completed' && (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowStatusMenu(showStatusMenu === row.id ? null : row.id)}
-                    className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition"
-                    title="Change Status"
-                  >
-                    <ChevronDown size={14} />
-                  </button>
-                  
-                  {showStatusMenu === row.id && (
-                    <>
-                      <div 
-                        className="fixed inset-0 z-10"
-                        onClick={() => setShowStatusMenu(null)}
-                      />
-                      <div className="absolute right-0 mt-1 w-36 bg-white rounded-lg shadow-lg border border-slate-200 z-20 overflow-hidden">
-                        {statusOptions.map((option) => {
-                          // Don't show current status
-                          if (option.value === row.status) return null;
-                          
-                          // Prevent invalid transitions
-                          if (row.status === 'ongoing' && option.value === 'pending') return null;
-                          if (row.status === 'confirmed' && option.value === 'pending') return null;
-                          
-                          return (
-                            <button
-                              key={option.value}
-                              onClick={() => handleStatusUpdate(row.id, option.value)}
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors"
-                            >
-                              <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
-                                option.color === 'success' ? 'bg-green-500' :
-                                option.color === 'warning' ? 'bg-yellow-500' :
-                                option.color === 'info' ? 'bg-blue-500' :
-                                option.color === 'error' ? 'bg-red-500' :
-                                'bg-slate-500'
-                              }`} />
-                              {option.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )
+      render: (row) => {
+        const validTransitions = getValidTransitions(row.status);
+        const isTerminal = row.status === 'completed' || row.status === 'cancelled';
+        const isOngoing = row.status === 'ongoing';
+        
+        return (
+          <div className="relative">
+            {updatingStatus === row.id ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                <span className="text-xs text-slate-500">Updating...</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getBookingStatusColor(row.status)}`}>
+                  {row.status ? row.status.toUpperCase() : 'PENDING'}
+                </span>
+                
+                {/* Show dropdown only for pending and confirmed (not for ongoing, completed, cancelled) */}
+                {!isTerminal && !isOngoing && validTransitions.length > 0 && (
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowStatusMenu(showStatusMenu === row.id ? null : row.id);
+                      }}
+                      className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition"
+                      title="Change Status"
+                    >
+                      <ChevronDown size={14} />
+                    </button>
+                    
+                    {showStatusMenu === row.id && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-10"
+                          onClick={() => setShowStatusMenu(null)}
+                        />
+                        <div className="absolute right-0 mt-1 w-36 bg-white rounded-lg shadow-lg border border-slate-200 z-20 overflow-hidden">
+                          {statusOptions.map((option) => {
+                            if (!validTransitions.includes(option.value)) return null;
+                            
+                            return (
+                              <button
+                                key={option.value}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStatusUpdate(row.id, option.value);
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors"
+                              >
+                                <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                                  option.color === 'success' ? 'bg-green-500' :
+                                  option.color === 'warning' ? 'bg-yellow-500' :
+                                  option.color === 'error' ? 'bg-red-500' :
+                                  'bg-slate-500'
+                                }`} />
+                                {option.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+                
+                {/* Show info text for ongoing status */}
+                {isOngoing && (
+                  <span className="text-xs text-slate-400 ml-1" title="Status managed via handover">
+                    (Handover)
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      }
     }
   ];
 

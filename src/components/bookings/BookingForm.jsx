@@ -35,7 +35,29 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
     if (editingRecord) {
       Object.keys(initialData).forEach(key => {
         if (editingRecord[key] !== undefined && editingRecord[key] !== null) {
-          initialData[key] = editingRecord[key];
+          // Special handling for dates
+          if (key === 'date_from' || key === 'date_to') {
+            const dateValue = editingRecord[key];
+            if (dateValue) {
+              const date = new Date(dateValue);
+              const year = date.getUTCFullYear();
+              const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+              const day = String(date.getUTCDate()).padStart(2, '0');
+              initialData[key] = `${year}-${month}-${day}`;
+            }
+          } else if (key === 'status') {
+            // Don't allow editing ongoing/completed status in form
+            const status = editingRecord[key];
+            if (status === 'ongoing' || status === 'completed') {
+              initialData[key] = status;
+              // Show a message that status can't be changed
+              toast.error(`${status.toUpperCase()} status cannot be changed manually`, { duration: 3000 });
+            } else {
+              initialData[key] = status;
+            }
+          } else {
+            initialData[key] = editingRecord[key];
+          }
         }
       });
     }
@@ -43,13 +65,14 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
     setFormData(initialData);
   }, [editingRecord]);
 
+
   // Check vehicle availability when dates change
   useEffect(() => {
     const checkAvailability = async () => {
       if (formData.date_from && formData.date_to && formData.vehicle_id) {
         setCheckingAvailability(true);
         try {
-          const response = await moduleApi.get('/bookings/available', {
+          const response = await moduleApi.getAll('/bookings/available', {
             params: {
               date_from: formData.date_from,
               date_to: formData.date_to,
@@ -80,14 +103,14 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
     const advance = Number(formData.advance_amount || 0);
     const deposit = Number(formData.security_deposit || 0);
     const totalUpfront = advance + deposit;
-    
+
     setFormData(prev => ({
       ...prev,
       upfront_payment: totalUpfront
     }));
   }, [formData.advance_amount, formData.security_deposit]);
 
-  
+
 
   const validateForm = () => {
     const requiredFields = ['customer_id', 'vehicle_id', 'date_from', 'date_to', 'pickup_city', 'dropoff_city'];
@@ -131,37 +154,55 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
     return 0;
   };
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     if (!validateForm()) {
       toast.error('Please fill all required fields');
       return;
     }
-  
+
     setLoading(true);
-  
+
     try {
       // Calculate upfront payment
       const advanceAmount = Number(formData.advance_amount || 0);
       const securityDeposit = Number(formData.security_deposit || 0);
       const upfrontPayment = advanceAmount + securityDeposit;
-      
+
+      // Format dates to YYYY-MM-DD without timezone
+      const formatDateForAPI = (dateString) => {
+        if (!dateString) return '';
+        // If it's already in YYYY-MM-DD format, return as is
+        if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          return dateString;
+        }
+        // Otherwise, parse and format
+        const date = new Date(dateString);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
       // Prepare submission data
       const submitData = {
         customer_id: formData.customer_id,
         vehicle_id: formData.vehicle_id,
-        date_from: formData.date_from,
-        date_to: formData.date_to,
+        date_from: formatDateForAPI(formData.date_from),
+        date_to: formatDateForAPI(formData.date_to),
         pickup_city: formData.pickup_city,
         dropoff_city: formData.dropoff_city,
         advance_amount: advanceAmount,
         security_deposit: securityDeposit,
-        upfront_payment: upfrontPayment,  // ← This is key!
+        upfront_payment: upfrontPayment,
         status: formData.status || 'pending',
         payment_status: formData.payment_status || 'unpaid'
       };
-  
+
+      console.log('Submitting data:', submitData); // Debug log
+
       if (editingRecord) {
         await moduleApi.update('/bookings', editingRecord.id, submitData);
         toast.success('Booking updated successfully');
@@ -169,7 +210,7 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
         await moduleApi.create('/bookings', submitData);
         toast.success('Booking created successfully');
       }
-  
+
       onSuccess();
     } catch (error) {
       console.error('Submit error:', error);
@@ -179,7 +220,7 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
     }
   };
 
-  
+
   const totalDays = calculateTotalDays();
 
 
@@ -220,7 +261,7 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
                   <option value="">Select Customer</option>
                   {customers?.map(customer => (
                     <option key={customer.id} value={customer.id}>
-                      {customer.name} - {customer.phone || customer.email || `ID: ${customer.id}`}
+                      {customer.id} - {customer.customer_name}
                     </option>
                   ))}
                 </select>
@@ -373,10 +414,25 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
               >
                 <option value="pending">Pending</option>
                 <option value="confirmed">Confirmed</option>
-                <option value="ongoing">Ongoing</option>
-                <option value="completed">Completed</option>
+                {/* Disable ongoing and completed for manual selection */}
+                <option value="ongoing" disabled className="text-slate-400">
+                  Ongoing (Via Handover)
+                </option>
+                <option value="completed" disabled className="text-slate-400">
+                  Completed (Via Return)
+                </option>
                 <option value="cancelled">Cancelled</option>
               </select>
+              {formData.status === 'ongoing' && (
+                <p className="text-xs text-blue-600 mt-1">
+                  ⓘ Ongoing status is managed through vehicle handover
+                </p>
+              )}
+              {formData.status === 'completed' && (
+                <p className="text-xs text-green-600 mt-1">
+                  ⓘ Completed status is managed through vehicle return
+                </p>
+              )}
             </div>
 
             {/* Payment Status */}

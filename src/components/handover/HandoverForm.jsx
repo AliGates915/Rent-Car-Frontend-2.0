@@ -15,7 +15,9 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
   const [handoverWarning, setHandoverWarning] = useState(null);
 
   // Fetch confirmed bookings for selection
-  const { data: confirmedBookings } = useFetch('/bookings?status=confirmed');
+  const { data: confirmedBookings } = useFetch('/bookings/confirmed');
+  console.log("Confirm ", confirmedBookings);
+
 
   // Fetch accessories list
   useEffect(() => {
@@ -56,7 +58,7 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
     const now = new Date();
     // Format to YYYY-MM-DDTHH:MM without timezone issues
     const formattedNow = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    
+
     const initialData = {
       booking_id: '',
       vehicle_id: '',
@@ -75,7 +77,7 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
           initialData[key] = editingRecord[key];
         }
       });
-      
+
       if (editingRecord.accessories && editingRecord.accessories.length > 0) {
         const updatedAccessories = accessories.map(acc => {
           const existing = editingRecord.accessories.find(
@@ -97,20 +99,20 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
   const handleBookingChange = async (bookingId) => {
     setFormData(prev => ({ ...prev, booking_id: bookingId }));
     setHandoverWarning(null);
-    
+
     if (bookingId) {
       try {
         const response = await moduleApi.getOne('/bookings', bookingId);
         if (response.data) {
           const booking = response.data;
           setSelectedBookingDetails(booking);
-          
+
           setFormData(prev => ({
             ...prev,
             vehicle_id: booking.vehicle_id,
             booking_id: bookingId
           }));
-          
+
           // Validate handover date against booking dates
           validateHandoverDate(formData.handover_datetime, booking);
         }
@@ -125,18 +127,18 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
   // Validate handover date against booking start and end dates
   const validateHandoverDate = (handoverDateTime, booking = selectedBookingDetails) => {
     if (!handoverDateTime || !booking) return;
-    
+
     const handoverDate = new Date(handoverDateTime);
     const startDate = new Date(booking.date_from);
     const endDate = new Date(booking.date_to);
-    
+
     // Remove time portion for date comparison
     handoverDate.setHours(0, 0, 0, 0);
     const startDateOnly = new Date(startDate);
     startDateOnly.setHours(0, 0, 0, 0);
     const endDateOnly = new Date(endDate);
     endDateOnly.setHours(0, 0, 0, 0);
-    
+
     if (handoverDate < startDateOnly) {
       setHandoverWarning({
         type: 'early',
@@ -171,7 +173,7 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
 
   const handleChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     if (name === 'handover_datetime') {
       // Clear future date error when user changes date
       setErrors(prev => ({ ...prev, handover_datetime: '' }));
@@ -179,7 +181,7 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
         validateHandoverDate(value, selectedBookingDetails);
       }
     }
-    
+
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -212,11 +214,11 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
     if (formData.handover_datetime) {
       const handoverDate = new Date(formData.handover_datetime);
       const now = new Date();
-      
+
       // Reset time to beginning of day for date comparison
       const handoverDateOnly = new Date(handoverDate.getFullYear(), handoverDate.getMonth(), handoverDate.getDate());
       const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
+
       // Allow handover on current date or past dates, block future dates
       if (handoverDateOnly > nowDateOnly) {
         newErrors.handover_datetime = 'Handover date cannot be in the future';
@@ -232,6 +234,7 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
     return Object.keys(newErrors).length === 0;
   };
 
+  // handleSubmit function
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -274,12 +277,27 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
 
       console.log('Submitting handover data:', submitData);
 
+      let response;
       if (editingRecord) {
-        await moduleApi.update('/handover', editingRecord.id, submitData);
+        response = await moduleApi.update('/handover', editingRecord.id, submitData);
         toast.success('Handover updated successfully');
       } else {
-        await moduleApi.create('/handover', submitData);
-        toast.success('Vehicle handed over successfully');
+        response = await moduleApi.create('/handover', submitData);
+
+        // After successful handover creation, update booking status to "ongoing"
+        if (response && response.data && response.data.booking_id) {
+          try {
+            await moduleApi.patch(`/bookings/${response.data.booking_id}/status`, {
+              status: 'ongoing'
+            });
+            toast.success('Vehicle handed over successfully - Booking status updated to Ongoing');
+          } catch (statusError) {
+            console.error('Failed to update booking status:', statusError);
+            toast.warning('Handover recorded but booking status could not be updated automatically');
+          }
+        } else {
+          toast.success('Vehicle handed over successfully');
+        }
       }
 
       onSuccess();
@@ -395,11 +413,10 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
 
             {/* Handover Warning Message */}
             {handoverWarning && (
-              <div className={`md:col-span-2 p-3 rounded-lg ${
-                handoverWarning.type === 'ontime' ? 'bg-green-50 border border-green-200' :
-                handoverWarning.type === 'early' ? 'bg-yellow-50 border border-yellow-200' :
-                'bg-orange-50 border border-orange-200'
-              }`}>
+              <div className={`md:col-span-2 p-3 rounded-lg ${handoverWarning.type === 'ontime' ? 'bg-green-50 border border-green-200' :
+                  handoverWarning.type === 'early' ? 'bg-yellow-50 border border-yellow-200' :
+                    'bg-orange-50 border border-orange-200'
+                }`}>
                 <div className="flex items-start gap-2">
                   <AlertCircle size={18} className={
                     handoverWarning.type === 'ontime' ? 'text-green-600' : 'text-yellow-600'
