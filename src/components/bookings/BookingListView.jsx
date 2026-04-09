@@ -73,9 +73,12 @@ export default function BookingListView({
         toast.success(`Booking ${statusString} successfully`);
       }
       
-      if (refreshData) {
-        await refreshData();
-      }
+      // Add a small delay to ensure backend has processed the change
+      setTimeout(async () => {
+        if (refreshData) {
+          await refreshData();
+        }
+      }, 500);
       
     } catch (error) {
       console.error('Status update error:', error);
@@ -85,6 +88,7 @@ export default function BookingListView({
     }
   };
 
+  
   // Get color classes for payment status
   const getPaymentStatusColor = (status) => {
     switch(status?.toLowerCase()) {

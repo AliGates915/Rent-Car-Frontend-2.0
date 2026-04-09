@@ -149,11 +149,11 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
       const end = new Date(formData.date_to);
       const diffTime = Math.abs(end - start);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays;
+      // Add 1 to include both start and end dates
+      return diffDays + 1;
     }
     return 0;
   };
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();

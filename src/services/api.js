@@ -112,4 +112,36 @@ export const moduleApi = {
   remove: (endpoint, id) => api.delete(`${endpoint}/${id}`),
 };
 
+export const fetchHandovers = async () => {
+  try {
+    const response = await moduleApi.getAll('/handovers', {
+      params: { page, limit, search, status }
+    });
+    
+    // ✅ Check if response has the expected structure
+    if (response.data && response.data.data) {
+      // If response is { data: { data: [...], total: ... } }
+      setHandovers(response.data.data);
+      setTotal(response.data.total);
+    } else if (Array.isArray(response.data)) {
+      // If response is just an array
+      setHandovers(response.data);
+      setTotal(response.data.length);
+    } else if (response.data && Array.isArray(response.data)) {
+      // If response.data is the array
+      setHandovers(response.data);
+      setTotal(response.data.length);
+    } else {
+      console.error('Unexpected response structure:', response);
+      setHandovers([]);
+      setTotal(0);
+    }
+  } catch (error) {
+    console.error('Error fetching handovers:', error);
+    setHandovers([]);
+    setTotal(0);
+  }
+};
+
+
 export default api;
