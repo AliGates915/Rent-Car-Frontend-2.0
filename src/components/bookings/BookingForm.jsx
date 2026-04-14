@@ -1,7 +1,7 @@
 // frontend/src/components/bookings/BookingForm.jsx
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Calendar, Car, User, MapPin, DollarSign, CreditCard } from 'lucide-react';
+import { Calendar, Car, User, MapPin, DollarSign, CreditCard, Tag } from 'lucide-react';
 import { moduleApi } from '../../services/api';
 import useFetch from '../../hooks/useFetch';
 
@@ -11,16 +11,39 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
   const [errors, setErrors] = useState({});
   const [availableVehicles, setAvailableVehicles] = useState([]);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [rentTypes, setRentTypes] = useState([]);
+  const [loadingRentTypes, setLoadingRentTypes] = useState(false);
 
   // Fetch customers and vehicles
   const { data: customers } = useFetch('/customers');
   const { data: vehicles } = useFetch('/vehicles/free');
+
+  // Fetch rent types
+  const fetchRentTypes = async () => {
+    setLoadingRentTypes(true);
+    try {
+      const response = await moduleApi.getAll('/rent-types', { status: 'active', limit: 100 });
+      if (response.data.success) {
+        setRentTypes(response.data.data || []);
+      } else if (Array.isArray(response.data)) {
+        setRentTypes(response.data);
+      } else {
+        setRentTypes([]);
+      }
+    } catch (error) {
+      console.error('Error fetching rent types:', error);
+      toast.error('Failed to load rent types');
+    } finally {
+      setLoadingRentTypes(false);
+    }
+  };
 
   // Initialize form
   useEffect(() => {
     const initialData = {
       customer_id: '',
       vehicle_id: '',
+      rent_type_id: '',
       date_from: '',
       date_to: '',
       pickup_city: '',
@@ -63,8 +86,8 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
     }
 
     setFormData(initialData);
+    fetchRentTypes();
   }, [editingRecord]);
-
 
   // Check vehicle availability when dates change
   useEffect(() => {
@@ -110,8 +133,6 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
     }));
   }, [formData.advance_amount, formData.security_deposit]);
 
-
-
   const validateForm = () => {
     const requiredFields = ['customer_id', 'vehicle_id', 'date_from', 'date_to', 'pickup_city', 'dropoff_city'];
     const newErrors = {};
@@ -153,6 +174,18 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
       return diffDays + 1;
     }
     return 0;
+  };
+
+  // Calculate rate multiplier based on selected rent type
+  const getRateMultiplier = () => {
+    if (!formData.rent_type_id) return 1;
+    const selectedRentType = rentTypes.find(rt => rt.id === parseInt(formData.rent_type_id));
+    if (!selectedRentType) return 1;
+    
+    const typeName = selectedRentType.name.toLowerCase();
+    if (typeName.includes('weekly')) return 0.9; // 10% discount for weekly
+    if (typeName.includes('monthly')) return 0.8; // 20% discount for monthly
+    return 1;
   };
 
   const handleSubmit = async (e) => {
@@ -201,6 +234,11 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
         payment_status: formData.payment_status || 'unpaid'
       };
 
+      // Add rent_type_id if selected
+      if (formData.rent_type_id) {
+        submitData.rent_type_id = parseInt(formData.rent_type_id);
+      }
+
       console.log('Submitting data:', submitData); // Debug log
 
       if (editingRecord) {
@@ -220,17 +258,16 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
     }
   };
 
-
   const totalDays = calculateTotalDays();
-
-
-  const selectedVehicle = vehicles?.find(
-    (v) => v.id === formData.vehicle_id
-  );
-
+  const selectedVehicle = vehicles?.find((v) => v.id === formData.vehicle_id);
   const ratePerDay = Number(selectedVehicle?.rate_per_day || 0);
-  const totalAmount = ratePerDay * totalDays;
+  const rateMultiplier = getRateMultiplier();
+  const discountedRate = ratePerDay * rateMultiplier;
+  const totalAmount = discountedRate * totalDays;
+  const discount = ratePerDay - discountedRate;
+  const discountPercent = rateMultiplier < 1 ? Math.round((1 - rateMultiplier) * 100) : 0;
 
+  const selectedRentType = rentTypes.find(rt => rt.id === parseInt(formData.rent_type_id));
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -284,12 +321,44 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
                   <option value="">Select Vehicle</option>
                   {vehicles?.map(vehicle => (
                     <option key={vehicle.id} value={vehicle.id}>
-                      {vehicle.car_make} {vehicle.car_model} ({vehicle.registration_no})
+                      {vehicle.car_make} {vehicle.car_model} ({vehicle.registration_no}) - ₨{vehicle.rate_per_day}/day
                     </option>
                   ))}
                 </select>
               </div>
               {errors.vehicle_id && <p className="text-xs text-red-500">{errors.vehicle_id}</p>}
+            </div>
+
+            {/* Rent Type Selection */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Rent Type
+              </label>
+              <div className="relative">
+                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <select
+                  value={formData.rent_type_id || ""}
+                  onChange={(e) => handleChange('rent_type_id', e.target.value ? parseInt(e.target.value) : '')}
+                  className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
+                  disabled={loadingRentTypes}
+                >
+                  <option value="">Standard Rate (No Discount)</option>
+                  {loadingRentTypes ? (
+                    <option disabled>Loading rent types...</option>
+                  ) : (
+                    rentTypes.map(type => (
+                      <option key={type.id} value={type.id}>
+                        {type.name} {type.description ? `- ${type.description}` : ''}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+              {selectedRentType && discountPercent > 0 && (
+                <p className="text-xs text-green-600 mt-1">
+                  ✨ {discountPercent}% discount applied for {selectedRentType.name}
+                </p>
+              )}
             </div>
 
             {/* Start Date */}
@@ -458,11 +527,26 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
           {/* Booking Summary */}
           {totalDays > 0 && formData.vehicle_id && selectedVehicle && (
             <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-              <h3 className="text-sm font-semibold text-blue-900 mb-2">
+              <h3 className="text-sm font-semibold text-blue-900 mb-3">
                 Booking Summary
               </h3>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                {/* Vehicle Info */}
+                <div>
+                  <span className="text-blue-700">Vehicle:</span>
+                  <span className="ml-2 font-semibold text-blue-900">
+                    {selectedVehicle.car_make} {selectedVehicle.car_model}
+                  </span>
+                </div>
+
+                {/* Registration */}
+                <div>
+                  <span className="text-blue-700">Registration:</span>
+                  <span className="ml-2 font-semibold text-blue-900">
+                    {selectedVehicle.registration_no}
+                  </span>
+                </div>
 
                 {/* Total Days */}
                 <div>
@@ -472,22 +556,44 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
                   </span>
                 </div>
 
-                {/* Total Amount */}
+                {/* Rate Per Day */}
                 <div>
-                  <span className="text-blue-700">Total Amount:</span>
+                  <span className="text-blue-700">Rate Per Day:</span>
                   <span className="ml-2 font-semibold text-blue-900">
-                    {ratePerDay} × {totalDays} = {totalAmount}
+                    ₨{ratePerDay.toLocaleString()}
                   </span>
                 </div>
 
-                {/* Vehicle */}
-                <div className="col-span-2">
-                  <span className="text-blue-700">Vehicle:</span>
-                  <span className="ml-2 font-semibold text-blue-900">
-                    {selectedVehicle.car_make} {selectedVehicle.car_model}
-                  </span>
-                </div>
+                {/* Discount if applicable */}
+                {discount > 0 && (
+                  <>
+                    <div>
+                      <span className="text-blue-700">Discount:</span>
+                      <span className="ml-2 font-semibold text-green-600">
+                        {discountPercent}% off ({selectedRentType?.name})
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-blue-700">Discounted Rate:</span>
+                      <span className="ml-2 font-semibold text-blue-900">
+                        ₨{discountedRate.toLocaleString()}/day
+                      </span>
+                    </div>
+                  </>
+                )}
 
+                {/* Total Amount */}
+                <div className="md:col-span-2 pt-2 border-t border-blue-200">
+                  <span className="text-blue-700 font-semibold">Total Amount:</span>
+                  <span className="ml-2 font-bold text-blue-900 text-lg">
+                    ₨{totalAmount.toLocaleString()}
+                  </span>
+                  {discount > 0 && (
+                    <span className="ml-2 text-sm text-green-600">
+                      (Saved ₨{(ratePerDay * totalDays - totalAmount).toLocaleString()})
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           )}

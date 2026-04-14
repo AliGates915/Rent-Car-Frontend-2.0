@@ -22,7 +22,6 @@ export default function ReturnListView({
   total,
   limit,
   onPageChange,
-  summary // Add summary prop
 }) {
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'cards'
   const [selectedReturn, setSelectedReturn] = useState(null);
@@ -401,8 +400,6 @@ export default function ReturnListView({
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <SummaryCards summaryData={summary} />
 
       {/* Main Content */}
       {loading ? (

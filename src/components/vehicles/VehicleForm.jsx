@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
-import { moduleApi } from '../../services/api';
+import { moduleApi, vehicleApi } from '../../services/api';
 import useFetch from '../../hooks/useFetch';
 
 export default function VehicleForm({ config, editingRecord, onSuccess, onCancelEdit }) {
@@ -12,28 +12,47 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
   const [imagePreviews, setImagePreviews] = useState([]);
   const [errors, setErrors] = useState({});
   const [imagesToDelete, setImagesToDelete] = useState([]);
+  const [vehicleTypes, setVehicleTypes] = useState([]);
+  const [loadingTypes, setLoadingTypes] = useState(false);
 
   // Fetch owners for the dropdown
   const { data: owners, loading: ownersLoading } = useFetch('/owners');
+  
+  // Fetch vehicle types for the dropdown
+  const fetchVehicleTypes = async () => {
+    setLoadingTypes(true);
+    try {
+      const response = await vehicleApi.getVehicleTypes({ limit: 100, status: 'active' });
+      if (response.data.success) {
+        setVehicleTypes(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching vehicle types:', error);
+      toast.error('Failed to load vehicle types');
+    } finally {
+      setLoadingTypes(false);
+    }
+  };
 
   // Initialize form with default values or editing record
   useEffect(() => {
     const initialData = {
       owner_id: '',
       registration_no: '',
-      car_make: '',           // ✅ Fixed: changed from 'make'
-      car_model: '',          // ✅ Fixed: changed from 'model'
-      year_of_model: new Date().getFullYear(),  // ✅ Fixed: changed from 'year'
-      car_type: '',           // ✅ Fixed: changed from 'vehicle_type_id'
+      car_make: '',
+      car_model: '',
+      year_of_model: new Date().getFullYear(),
+      car_type: '',
       rate_per_day: 0,
-      transmission_type: '',  // ✅ Fixed: changed from 'transmission'
+      transmission_type: '',
       fuel_type: '',
       seating_capacity: '',
       engine_capacity: '',
       location: '',
+      color: '',
       air_conditioner: true,
-      android_panel: false,
-      sun_roof: false,
+      android: false,
+      sunroof: false,
       front_camera: false,
       rear_camera: false,
       status: 'available'
@@ -65,6 +84,11 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
     setImages([]);
     setImagesToDelete([]);
   }, [editingRecord]);
+
+  // Fetch vehicle types on component mount
+  useEffect(() => {
+    fetchVehicleTypes();
+  }, []);
 
   const handleChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -132,7 +156,6 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
   };
 
   const validateForm = () => {
-    // ✅ Fixed: using correct API field names
     const requiredFields = ['owner_id', 'registration_no', 'car_make', 'car_model', 'year_of_model', 'car_type', 'transmission_type', 'fuel_type'];
     const newErrors = {};
 
@@ -205,8 +228,8 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
     }
   };
 
-  console.log("editing ", editingRecord);
-  console.log("Form Data ", formData);
+  // console.log("editing ", editingRecord);
+  // console.log("Form Data ", formData);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -299,7 +322,7 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               <input
                 type="number"
                 value={formData.year_of_model || ''}
-                onChange={(e) => handleChange('year_of_model', parseInt(e.target.value))}
+                onChange={(e) => handleChange('year_of_model', e.target.value)}
                 className={`w-full rounded-xl border ${errors.year_of_model ? 'border-red-500' : 'border-slate-200'} bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
                 placeholder="2024"
                 min="1990"
@@ -308,7 +331,7 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               {errors.year_of_model && <p className="text-xs text-red-500">{errors.year_of_model}</p>}
             </div>
 
-            {/* Vehicle Type */}
+            {/* Vehicle Type - Dynamic from API */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
                 Vehicle Type <span className="text-red-500">*</span>
@@ -317,13 +340,18 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
                 value={formData.car_type || ""}
                 onChange={(e) => handleChange('car_type', e.target.value)}
                 className={`w-full rounded-xl border ${errors.car_type ? 'border-red-500' : 'border-slate-200'} bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
+                disabled={loadingTypes}
               >
                 <option value="">Select Vehicle Type</option>
-                <option value="Sedan">Sedan</option>
-                <option value="SUV">SUV</option>
-                <option value="Hatchback">Hatchback</option>
-                <option value="Truck">Truck</option>
-                <option value="Van">Van</option>
+                {loadingTypes ? (
+                  <option disabled>Loading types...</option>
+                ) : (
+                  vehicleTypes.map(type => (
+                    <option key={type.id} value={type.id}>
+                      {type.name}
+                    </option>
+                  ))
+                )}
               </select>
               {errors.car_type && <p className="text-xs text-red-500">{errors.car_type}</p>}
             </div>
@@ -341,6 +369,20 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
                 placeholder="2000"
                 min="0"
                 step="0.01"
+              />
+            </div>
+
+            {/* Color */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Color
+              </label>
+              <input
+                type="text"
+                value={formData.color || ''}
+                onChange={(e) => handleChange('color', e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
+                placeholder="White, Black, Silver"
               />
             </div>
 
@@ -443,8 +485,8 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.android_panel || false}
-                  onChange={(e) => handleChange('android_panel', e.target.checked)}
+                  checked={formData.android || false}
+                  onChange={(e) => handleChange('android', e.target.checked)}
                   className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                 />
                 <span className="text-sm text-slate-700">Android Panel</span>
@@ -453,8 +495,8 @@ export default function VehicleForm({ config, editingRecord, onSuccess, onCancel
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.sun_roof || false}
-                  onChange={(e) => handleChange('sun_roof', e.target.checked)}
+                  checked={formData.sunroof || false}
+                  onChange={(e) => handleChange('sunroof', e.target.checked)}
                   className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                 />
                 <span className="text-sm text-slate-700">Sun Roof</span>

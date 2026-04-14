@@ -1,3 +1,4 @@
+// frontend/src/services/api.js
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
@@ -48,16 +49,16 @@ export const moduleApi = {
         queryParams.append(key, params[key]);
       }
     });
-    
-    const url = queryParams.toString() 
+
+    const url = queryParams.toString()
       ? `${endpoint}?${queryParams.toString()}`
       : endpoint;
-    
+
     return await api.get(url);
   },
 
   getOne: (endpoint, id) => api.get(`${endpoint}/${id}`),
-  
+
   create: async (endpoint, data) => {
     if (data instanceof FormData) {
       return await api.post(endpoint, data, {
@@ -68,17 +69,17 @@ export const moduleApi = {
     }
     return await api.post(endpoint, data);
   },
-  
+
   getById: async (endpoint, id) => {
     return await api.get(`${endpoint}/${id}`);
   },
-  
+
   update: (endpoint, id, data) => api.put(`${endpoint}/${id}`, data),
-  
+
   // FIXED: Use PATCH method, not PUT
   patch: async (endpoint, idOrData, dataOrNull) => {
     let url, data;
-    
+
     // Handle different calling patterns
     if (typeof idOrData === 'object' || idOrData === undefined) {
       // Pattern: patch('/bookings/10/status', { status: 'confirmed' })
@@ -89,7 +90,7 @@ export const moduleApi = {
       url = `${endpoint}/${idOrData}`;
       data = dataOrNull;
     }
-    
+
     if (data instanceof FormData) {
       return await api.patch(url, data, {
         headers: {
@@ -99,49 +100,167 @@ export const moduleApi = {
     }
     return await api.patch(url, data);
   },
-  
+
   // Convenience methods
   updateStatus: async (bookingId, status) => {
     return await api.patch(`/bookings/${bookingId}/status`, { status });
   },
-  
+
   cancelBooking: async (bookingId) => {
     return await api.patch(`/bookings/${bookingId}/cancel`);
   },
-  
+
   remove: (endpoint, id) => api.delete(`${endpoint}/${id}`),
 };
 
-export const fetchHandovers = async () => {
-  try {
-    const response = await moduleApi.getAll('/handovers', {
-      params: { page, limit, search, status }
+// Cash Receipt API
+export const cashReceiptApi = {
+  // Get all customers with balance summary
+  getCustomersWithBalance: async (search = '') => {
+    const params = search ? `?search=${search}` : '';
+    const response = await api.get(`/receipts/customers/with-balance${params}`);
+    return response;
+  },
+
+  getCustomersWithBalance: async (search = '') => {
+    const params = search ? `?search=${search}` : '';
+    const response = await api.get(`/receipts/customers/with-balance${params}`);
+    return response;
+  },
+
+  // Get all receipts
+  getAll: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        queryParams.append(key, params[key]);
+      }
     });
-    
-    // ✅ Check if response has the expected structure
-    if (response.data && response.data.data) {
-      // If response is { data: { data: [...], total: ... } }
-      setHandovers(response.data.data);
-      setTotal(response.data.total);
-    } else if (Array.isArray(response.data)) {
-      // If response is just an array
-      setHandovers(response.data);
-      setTotal(response.data.length);
-    } else if (response.data && Array.isArray(response.data)) {
-      // If response.data is the array
-      setHandovers(response.data);
-      setTotal(response.data.length);
-    } else {
-      console.error('Unexpected response structure:', response);
-      setHandovers([]);
-      setTotal(0);
-    }
-  } catch (error) {
-    console.error('Error fetching handovers:', error);
-    setHandovers([]);
-    setTotal(0);
+
+    const url = queryParams.toString()
+      ? `/cash-receipts?${queryParams.toString()}`
+      : '/cash-receipts';
+
+    const response = await api.get(url);
+    return response;
+  },
+
+  // Get receipt by id
+  getById: async (id) => {
+    const response = await api.get(`/cash-receipts/${id}`);
+    return response;
+  },
+
+  // Create receipt
+  create: async (data) => {
+    const response = await api.post('/cash-receipts', data);
+    return response;
+  },
+
+  // Update receipt
+  update: async (id, data) => {
+    const response = await api.put(`/cash-receipts/${id}`, data);
+    return response;
+  },
+
+  // Delete receipt
+  delete: async (id) => {
+    const response = await api.delete(`/cash-receipts/${id}`);
+    return response;
+  },
+
+  // Get report by date range
+  getReport: async (from, to) => {
+    const response = await api.get(`/cash-receipts/report/date?from=${from}&to=${to}`);
+    return response;
   }
 };
 
+// Vehicle API
+export const vehicleApi = {
+  // Get all vehicle types
+  getVehicleTypes: async (params = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        queryParams.append(key, params[key]);
+      }
+    });
+    
+    const url = queryParams.toString() 
+      ? `/vehicle-types?${queryParams.toString()}`
+      : '/vehicle-types';
+    
+    const response = await api.get(url);
+    return response;
+  },
+  
+  // Get single vehicle type
+  getVehicleTypeById: async (id) => {
+    const response = await api.get(`/vehicle-types/${id}`);
+    return response;
+  },
+  
+  // Create vehicle type
+  createVehicleType: async (data) => {
+    const response = await api.post('/vehicle-types', data);
+    return response;
+  },
+  
+  // Update vehicle type
+  updateVehicleType: async (id, data) => {
+    const response = await api.put(`/vehicle-types/${id}`, data);
+    return response;
+  },
+  
+  // Delete vehicle type
+  deleteVehicleType: async (id) => {
+    const response = await api.delete(`/vehicle-types/${id}`);
+    return response;
+  }
+};
+
+
+// Helper function for fetching handovers (fixed)
+export const fetchHandovers = async (page = 1, limit = 10, search = '', status = '') => {
+  try {
+    const response = await moduleApi.getAll('/handovers', {
+      page,
+      limit,
+      search,
+      status
+    });
+
+    // Check if response has the expected structure
+    if (response.data && response.data.data) {
+      return {
+        handovers: response.data.data,
+        total: response.data.total || response.data.data.length
+      };
+    } else if (Array.isArray(response.data)) {
+      return {
+        handovers: response.data,
+        total: response.data.length
+      };
+    } else if (response.data && Array.isArray(response.data)) {
+      return {
+        handovers: response.data,
+        total: response.data.length
+      };
+    } else {
+      console.error('Unexpected response structure:', response);
+      return {
+        handovers: [],
+        total: 0
+      };
+    }
+  } catch (error) {
+    console.error('Error fetching handovers:', error);
+    return {
+      handovers: [],
+      total: 0
+    };
+  }
+};
 
 export default api;

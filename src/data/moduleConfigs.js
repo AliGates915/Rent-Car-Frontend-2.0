@@ -259,8 +259,6 @@ export const moduleConfigs = {
     ],
   },
 
-
-
   payments: {
     title: 'Payments',
     endpoint: '/payments',
@@ -285,9 +283,10 @@ export const moduleConfigs = {
       { key: 'payment_date', label: 'Date', type: 'date' },
     ],
   },
+
   'cash-receipts': {
     title: 'Cash Receipts',
-    endpoint: '/cash-receipts',
+    endpoint: '/receipts',
     tabs: [
       { key: 'list', label: 'List' },
       { key: 'form', label: 'Form' },
@@ -308,7 +307,12 @@ export const moduleConfigs = {
       { key: 'amount', label: 'Amount', type: 'currency' },
       { key: 'payment_method', label: 'Method' },
     ],
+    filters: [
+      { key: 'head', label: 'Head', options: ['booking', 'deposit', 'other'] },
+      { key: 'payment_method', label: 'Payment Method', options: ['cash', 'bank', 'easypaisa', 'jazzcash'] },
+    ]
   },
+
   expenses: {
     title: 'Expenses',
     endpoint: '/expenses',

@@ -30,6 +30,10 @@ import HandoverListView from '../components/handover/HandoverListView';
 import ReturnForm from '../components/return/ReturnForm';
 import ReturnListView from '../components/return/ReturnListView';
 
+import CashReceiptsForm from '../components/cash-receipts/CashReceiptsForm';
+import CashReceiptsListView from '../components/cash-receipts/CashReceiptsListView';
+import CashReceiptsReport from '../components/cash-receipts/CashReceiptsReport';
+
 function buildFilters(config, filterValues) {
   if (!config?.filters || !Array.isArray(config.filters)) {
     return [];
@@ -211,6 +215,17 @@ function RegularModulePage({ moduleKey, config }) {
             />
           );
         }
+        if (moduleKey === 'cash-receipts') {
+          return (
+            <CashReceiptsForm
+              config={config}
+              editingRecord={editingRecord}
+              onSuccess={handleSuccess}
+              onCancelEdit={() => setEditingRecord(null)}
+            />
+          );
+        }
+
         return <GenericForm config={config} editingRecord={editingRecord} onSuccess={handleSuccess} onCancelEdit={() => setEditingRecord(null)} />;
 
       case 'list':
@@ -233,6 +248,36 @@ function RegularModulePage({ moduleKey, config }) {
               }}
               onEdit={config.fields.length ? handleEdit : undefined}
               onDelete={config.columns.length ? handleDelete : undefined}
+              page={page}
+              total={meta.total}
+              limit={meta.limit}
+              onPageChange={setPage}
+            />
+          );
+        }
+        
+        if (moduleKey === 'cash-receipts') {
+          return (
+            <CashReceiptsListView
+              receipts={data}
+              loading={loading}
+              search={search}
+              onSearch={(val) => {
+                setSearch(val);
+                setPage(1);
+              }}
+              filters={buildFilters(config, filterValues)}
+              filterValues={filterValues}
+              onFilterChange={(key, value) => {
+                setPage(1);
+                setFilterValues((prev) => ({ ...prev, [key]: value }));
+              }}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onViewReceipt={(receipt) => {
+                // Handle viewing receipt details - could open a modal
+                console.log('View receipt:', receipt);
+              }}
               page={page}
               total={meta.total}
               limit={meta.limit}
