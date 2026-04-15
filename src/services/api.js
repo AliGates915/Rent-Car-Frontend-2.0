@@ -113,22 +113,9 @@ export const moduleApi = {
   remove: (endpoint, id) => api.delete(`${endpoint}/${id}`),
 };
 
-// Cash Receipt API
+
 export const cashReceiptApi = {
-  // Get all customers with balance summary
-  getCustomersWithBalance: async (search = '') => {
-    const params = search ? `?search=${search}` : '';
-    const response = await api.get(`/receipts/customers/with-balance${params}`);
-    return response;
-  },
-
-  getCustomersWithBalance: async (search = '') => {
-    const params = search ? `?search=${search}` : '';
-    const response = await api.get(`/receipts/customers/with-balance${params}`);
-    return response;
-  },
-
-  // Get all receipts
+  // Get all receipts with customer names
   getAll: async (params = {}) => {
     const queryParams = new URLSearchParams();
     Object.keys(params).forEach(key => {
@@ -138,43 +125,55 @@ export const cashReceiptApi = {
     });
 
     const url = queryParams.toString()
-      ? `/cash-receipts?${queryParams.toString()}`
-      : '/cash-receipts';
+      ? `/receipts?${queryParams.toString()}`
+      : '/receipts';
 
     const response = await api.get(url);
     return response;
   },
 
-  // Get receipt by id
-  getById: async (id) => {
-    const response = await api.get(`/cash-receipts/${id}`);
+  // Get report by date range (returns array directly)
+  getReportData: async (params = {}) => {
+    const response = await api.get('/receipts/report-data', { params });
+    return response;
+  },
+
+  
+  // Get grouped data for charts
+  getGrouped: async (start_date, end_date, group_by = 'day') => {
+    const response = await api.get('/receipts/grouped', {
+      params: { start_date, end_date, group_by }
+    });
+    return response;
+  },
+
+  // Get summary statistics
+  getSummary: async (start_date, end_date) => {
+    const response = await api.get('/receipts/summary', {
+      params: { start_date, end_date }
+    });
     return response;
   },
 
   // Create receipt
   create: async (data) => {
-    const response = await api.post('/cash-receipts', data);
+    const response = await api.post('/receipts', data);
     return response;
   },
 
   // Update receipt
   update: async (id, data) => {
-    const response = await api.put(`/cash-receipts/${id}`, data);
+    const response = await api.put(`/receipts/${id}`, data);
     return response;
   },
 
   // Delete receipt
   delete: async (id) => {
-    const response = await api.delete(`/cash-receipts/${id}`);
-    return response;
-  },
-
-  // Get report by date range
-  getReport: async (from, to) => {
-    const response = await api.get(`/cash-receipts/report/date?from=${from}&to=${to}`);
+    const response = await api.delete(`/receipts/${id}`);
     return response;
   }
 };
+
 
 // Vehicle API
 export const vehicleApi = {
@@ -186,33 +185,33 @@ export const vehicleApi = {
         queryParams.append(key, params[key]);
       }
     });
-    
-    const url = queryParams.toString() 
+
+    const url = queryParams.toString()
       ? `/vehicle-types?${queryParams.toString()}`
       : '/vehicle-types';
-    
+
     const response = await api.get(url);
     return response;
   },
-  
+
   // Get single vehicle type
   getVehicleTypeById: async (id) => {
     const response = await api.get(`/vehicle-types/${id}`);
     return response;
   },
-  
+
   // Create vehicle type
   createVehicleType: async (data) => {
     const response = await api.post('/vehicle-types', data);
     return response;
   },
-  
+
   // Update vehicle type
   updateVehicleType: async (id, data) => {
     const response = await api.put(`/vehicle-types/${id}`, data);
     return response;
   },
-  
+
   // Delete vehicle type
   deleteVehicleType: async (id) => {
     const response = await api.delete(`/vehicle-types/${id}`);

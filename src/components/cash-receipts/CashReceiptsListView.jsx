@@ -1,6 +1,6 @@
 // frontend/src/components/cash-receipts/CashReceiptsListView.jsx
 import { useState } from 'react';
-import { Eye, Edit, Trash2, Download, Printer, X } from 'lucide-react';
+import { Eye, Edit, Trash2, Download, Printer } from 'lucide-react';
 import DataTable from '../ui/DataTable';
 import Modal from '../ui/Modal';
 
@@ -29,14 +29,47 @@ export default function CashReceiptsListView({
     onViewReceipt?.(receipt);
   };
 
-  // Custom columns with additional actions
+  // Get customer name or source description
+  const getReceivedFrom = (receipt) => {
+    if (receipt.customer_name) {
+      return receipt.customer_name;
+    }
+    if (receipt.source === 'booking' && receipt.reference_id) {
+      return `Booking #${receipt.reference_id}`;
+    }
+    return receipt.source || 'General';
+  };
+
+  // Get receipt head/type
+  const getHead = (receipt) => {
+    if (receipt.source === 'booking') return 'Booking Payment';
+    if (receipt.customer_id) return 'Customer Payment';
+    return 'General Receipt';
+  };
+
+  // Custom columns with actual table fields
   const columns = [
-    { key: 'receipt_date', label: 'Date', type: 'date' },
-    { key: 'received_from', label: 'Received From' },
-    { key: 'head', label: 'Head' },
-    { 
-      key: 'amount', 
-      label: 'Amount', 
+    {
+      key: 'created_at',
+      label: 'Date',
+      type: 'date',
+      render: (row) => (
+        <span>{new Date(row.created_at).toLocaleDateString()}</span>
+      )
+    },
+    {
+      key: 'received_from',
+      label: 'Received From',
+      render: (row) => getReceivedFrom(row)
+    },
+    {
+      key: 'head',
+      label: 'Head',
+      render: (row) => getHead(row)
+    },
+    {
+      key: 'amount',
+      label: 'Amount',
       type: 'currency',
       render: (row) => (
         <span className="font-semibold text-green-600">
@@ -44,8 +77,8 @@ export default function CashReceiptsListView({
         </span>
       )
     },
-    { 
-      key: 'payment_method', 
+    {
+      key: 'payment_method',
       label: 'Method',
       render: (row) => {
         const methodColors = {
@@ -165,11 +198,13 @@ export default function CashReceiptsListView({
                 onClick={() => {
                   // Export to CSV logic
                   const csvData = receipts?.map(r => ({
-                    Date: r.receipt_date,
-                    'Received From': r.received_from,
-                    Head: r.head,
+                    Date: new Date(r.created_at).toLocaleDateString(),
+                    'Received From': getReceivedFrom(r),
+                    Head: getHead(r),
                     Amount: r.amount,
                     'Payment Method': r.payment_method,
+                    'Reference ID': r.reference_id || '',
+                    'Customer ID': r.customer_id || '',
                     Notes: r.notes || ''
                   })) || [];
                   const csv = convertToCSV(csvData);
@@ -186,8 +221,8 @@ export default function CashReceiptsListView({
       </div>
 
       {/* View Receipt Modal */}
-      <Modal 
-        isOpen={isViewModalOpen} 
+      <Modal
+        isOpen={isViewModalOpen}
         onClose={() => setIsViewModalOpen(false)}
         title="Receipt Details"
       >
@@ -195,31 +230,53 @@ export default function CashReceiptsListView({
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-500">Receipt Date</label>
-                <p className="mt-1 text-gray-900">{selectedReceipt.receipt_date}</p>
+                <label className="text-sm font-medium text-gray-500">Date</label>
+                <p className="mt-1 text-gray-900">
+                  {new Date(selectedReceipt.created_at).toLocaleString()}
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Received From</label>
-                <p className="mt-1 text-gray-900">{selectedReceipt.received_from}</p>
+                <p className="mt-1 text-gray-900">{getReceivedFrom(selectedReceipt)}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Head</label>
-                <p className="mt-1 text-gray-900 capitalize">{selectedReceipt.head || '-'}</p>
+                <p className="mt-1 text-gray-900 capitalize">{getHead(selectedReceipt)}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Amount</label>
-                <p className="mt-1 text-xl font-bold text-green-600">₨ {parseFloat(selectedReceipt.amount).toLocaleString()}</p>
+                <p className="mt-1 text-xl font-bold text-green-600">
+                  ₨ {parseFloat(selectedReceipt.amount).toLocaleString()}
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Payment Method</label>
                 <p className="mt-1 text-gray-900 capitalize">{selectedReceipt.payment_method || '-'}</p>
               </div>
+              {selectedReceipt.reference_id && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Reference ID</label>
+                  <p className="mt-1 text-gray-900">{selectedReceipt.reference_id}</p>
+                </div>
+              )}
+              {selectedReceipt.customer_id && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Customer ID</label>
+                  <p className="mt-1 text-gray-900">{selectedReceipt.customer_id}</p>
+                </div>
+              )}
+              {selectedReceipt.source && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Source</label>
+                  <p className="mt-1 text-gray-900 capitalize">{selectedReceipt.source}</p>
+                </div>
+              )}
               <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-500">Notes</label>
                 <p className="mt-1 text-gray-900">{selectedReceipt.notes || 'No notes provided'}</p>
               </div>
             </div>
-            
+
             <div className="pt-4 border-t border-gray-200 flex justify-end">
               <button
                 onClick={() => {

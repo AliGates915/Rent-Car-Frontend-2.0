@@ -12,7 +12,7 @@ const navigation = [
   { label: 'Bookings', to: '/bookings', icon: ClipboardList },
   { label: 'Handover', to: '/handover', icon: HandCoins },
   { label: 'Return', to: '/return', icon: HandCoins },
-  { label: 'Payments', to: '/payments', icon: CreditCard },
+  // { label: 'Payments', to: '/payments', icon: CreditCard },
   { label: 'Cash Receipts', to: '/cash-receipts', icon: CreditCard },
   { label: 'Expenses', to: '/expenses', icon: CreditCard },
   { label: 'Maintenance', to: '/maintenance', icon: Wrench },

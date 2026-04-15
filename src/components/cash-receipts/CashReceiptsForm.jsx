@@ -112,12 +112,6 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
   const maxAmount = selectedBooking ? selectedBooking.remaining_amount : 0;
 
   const onSubmit = async (data) => {
-    // Validate amount doesn't exceed remaining
-    if (source === 'booking' && data.amount > maxAmount) {
-      toast.error(`Amount cannot exceed remaining balance of ₨${maxAmount.toLocaleString()}`);
-      return;
-    }
-
     setLoading(true);
     try {
       const payload = {
@@ -479,7 +473,7 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
           </button>
           <button
             type="submit"
-            disabled={loading || (source === 'booking' && (!selectedBooking || !selectedCustomer))}
+            disabled={loading}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Saving...' : editingRecord ? 'Update Receipt' : 'Create Receipt'}

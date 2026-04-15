@@ -431,6 +431,11 @@ function RegularModulePage({ moduleKey, config }) {
         return <PlaceholderContent title={activeTab} />;
 
       case 'report':
+        if (moduleKey === 'cash-receipts') {
+          return <CashReceiptsReport />;
+        }
+        return <ReportSection title={config.title} />;
+
       case 'summary':
       case 'profit-loss':
       case 'daybook':

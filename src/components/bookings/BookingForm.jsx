@@ -176,18 +176,6 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
     return 0;
   };
 
-  // Calculate rate multiplier based on selected rent type
-  const getRateMultiplier = () => {
-    if (!formData.rent_type_id) return 1;
-    const selectedRentType = rentTypes.find(rt => rt.id === parseInt(formData.rent_type_id));
-    if (!selectedRentType) return 1;
-    
-    const typeName = selectedRentType.name.toLowerCase();
-    if (typeName.includes('weekly')) return 0.9; // 10% discount for weekly
-    if (typeName.includes('monthly')) return 0.8; // 20% discount for monthly
-    return 1;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -234,7 +222,7 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
         payment_status: formData.payment_status || 'unpaid'
       };
 
-      // Add rent_type_id if selected
+      // Add rent_type_id if selected (but without discount logic)
       if (formData.rent_type_id) {
         submitData.rent_type_id = parseInt(formData.rent_type_id);
       }
@@ -261,13 +249,8 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
   const totalDays = calculateTotalDays();
   const selectedVehicle = vehicles?.find((v) => v.id === formData.vehicle_id);
   const ratePerDay = Number(selectedVehicle?.rate_per_day || 0);
-  const rateMultiplier = getRateMultiplier();
-  const discountedRate = ratePerDay * rateMultiplier;
-  const totalAmount = discountedRate * totalDays;
-  const discount = ratePerDay - discountedRate;
-  const discountPercent = rateMultiplier < 1 ? Math.round((1 - rateMultiplier) * 100) : 0;
-
-  const selectedRentType = rentTypes.find(rt => rt.id === parseInt(formData.rent_type_id));
+  // REMOVED: discount calculation - now using full rate
+  const totalAmount = ratePerDay * totalDays;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -329,7 +312,7 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
               {errors.vehicle_id && <p className="text-xs text-red-500">{errors.vehicle_id}</p>}
             </div>
 
-            {/* Rent Type Selection */}
+            {/* Rent Type Selection - REMOVED DISCOUNT INFO */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
                 Rent Type
@@ -342,7 +325,7 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
                   className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
                   disabled={loadingRentTypes}
                 >
-                  <option value="">Standard Rate (No Discount)</option>
+                  <option value="">Standard Rate</option>
                   {loadingRentTypes ? (
                     <option disabled>Loading rent types...</option>
                   ) : (
@@ -354,11 +337,7 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
                   )}
                 </select>
               </div>
-              {selectedRentType && discountPercent > 0 && (
-                <p className="text-xs text-green-600 mt-1">
-                  ✨ {discountPercent}% discount applied for {selectedRentType.name}
-                </p>
-              )}
+              {/* REMOVED: Discount message */}
             </div>
 
             {/* Start Date */}
@@ -524,7 +503,7 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
             </div>
           </div>
 
-          {/* Booking Summary */}
+          {/* Booking Summary - REMOVED DISCOUNT SECTION */}
           {totalDays > 0 && formData.vehicle_id && selectedVehicle && (
             <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
               <h3 className="text-sm font-semibold text-blue-900 mb-3">
@@ -564,23 +543,7 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
                   </span>
                 </div>
 
-                {/* Discount if applicable */}
-                {discount > 0 && (
-                  <>
-                    <div>
-                      <span className="text-blue-700">Discount:</span>
-                      <span className="ml-2 font-semibold text-green-600">
-                        {discountPercent}% off ({selectedRentType?.name})
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-blue-700">Discounted Rate:</span>
-                      <span className="ml-2 font-semibold text-blue-900">
-                        ₨{discountedRate.toLocaleString()}/day
-                      </span>
-                    </div>
-                  </>
-                )}
+                {/* REMOVED: Discount and Discounted Rate sections */}
 
                 {/* Total Amount */}
                 <div className="md:col-span-2 pt-2 border-t border-blue-200">
@@ -588,11 +551,6 @@ export default function BookingForm({ config, editingRecord, onSuccess, onCancel
                   <span className="ml-2 font-bold text-blue-900 text-lg">
                     ₨{totalAmount.toLocaleString()}
                   </span>
-                  {discount > 0 && (
-                    <span className="ml-2 text-sm text-green-600">
-                      (Saved ₨{(ratePerDay * totalDays - totalAmount).toLocaleString()})
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
