@@ -75,14 +75,14 @@ export default function BookingListView({
         toast.success(`Booking ${statusString} successfully`);
       }
       
-      // Reset to page 1 and refresh
-      if (onPageChange) {
-        onPageChange(1);
-      }
-      
-      // Refresh data
+      // Refresh data first
       if (refreshData) {
         await refreshData();
+      }
+      
+      // Then reset to page 1 (if needed)
+      if (onPageChange) {
+        onPageChange(1);
       }
       
     } catch (error) {
@@ -92,7 +92,6 @@ export default function BookingListView({
       setUpdatingStatus(null);
     }
   };
-
   // Get color classes for payment status
   const getPaymentStatusColor = (status) => {
     switch(status?.toLowerCase()) {
@@ -258,7 +257,7 @@ export default function BookingListView({
       total={total}
       limit={limit}
       onPageChange={onPageChange}
-      actions={true}
+      actions={true} 
     />
   );
 }

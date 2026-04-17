@@ -1,8 +1,6 @@
 // frontend/src/components/handover/HandoverForm.jsx
 import { useState, useEffect } from 'react';
 import { Car, Clock, Calendar, Fuel, Gauge, User, PenTool, Signature, Package, AlertCircle } from 'lucide-react';
-
-
 import { moduleApi } from '../../services/api';
 import useFetch from '../../hooks/useFetch';
 import toast from 'react-hot-toast';
@@ -15,11 +13,11 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
   const [availableAccessories, setAvailableAccessories] = useState([]);
   const [selectedBookingDetails, setSelectedBookingDetails] = useState(null);
   const [handoverWarning, setHandoverWarning] = useState(null);
+  const [maxHandoverDate, setMaxHandoverDate] = useState('');
 
   // Fetch confirmed bookings for selection
   const { data: confirmedBookings } = useFetch('/bookings/confirmed');
   console.log("Confirm ", confirmedBookings);
-
 
   // Fetch accessories list
   useEffect(() => {
@@ -85,33 +83,23 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
     setFormData(initialData);
   }, [editingRecord]);
 
-
   // Auto-populate vehicle and validate handover date when booking is selected
   const handleBookingChange = async (bookingId) => {
-    setFormData(prev => ({ ...prev, booking_id: bookingId }));
-    setHandoverWarning(null);
-
     if (bookingId) {
-      try {
-        const response = await moduleApi.getOne('/bookings', bookingId);
-        if (response.data) {
-          const booking = response.data;
-          setSelectedBookingDetails(booking);
+      const response = await moduleApi.getOne('/bookings', bookingId);
+      const booking = response.data;
 
-          setFormData(prev => ({
-            ...prev,
-            vehicle_id: booking.vehicle_id,
-            booking_id: bookingId
-          }));
+      const startDate = booking.date_from.split('T')[0];
 
-          // Validate handover date against booking dates
-          validateHandoverDate(formData.handover_datetime, booking);
-        }
-      } catch (error) {
-        console.error('Failed to fetch booking details:', error);
-      }
-    } else {
-      setSelectedBookingDetails(null);
+      // ✅ Only MAX date set karo
+      setMaxHandoverDate(startDate);
+
+      setFormData(prev => ({
+        ...prev,
+        booking_id: bookingId,
+        vehicle_id: booking.vehicle_id,
+        handover_date: startDate
+      }));
     }
   };
 
@@ -121,61 +109,37 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
 
     const handoverDateStr = handoverDate;
     const startDateStr = booking.date_from.split('T')[0];
-    const endDateStr = booking.date_to.split('T')[0];
 
     let warning = null;
 
-    if (handoverDateStr < startDateStr) {
-      const handoverDateObj = new Date(handoverDateStr);
-      const startDateObj = new Date(startDateStr);
-      const daysEarly = Math.ceil((startDateObj - handoverDateObj) / (1000 * 60 * 60 * 24));
-
-      warning = {
-        type: 'early',
-        message: `⚠️ Early Handover: ${daysEarly} days before booking start date`,
-        suggestion: 'Consider adjusting the booking start date'
-      };
-    }
-    else if (handoverDateStr > endDateStr) {
-      const handoverDateObj = new Date(handoverDateStr);
-      const endDateObj = new Date(endDateStr);
-      const daysLate = Math.ceil((handoverDateObj - endDateObj) / (1000 * 60 * 60 * 24));
-
-      warning = {
-        type: 'late',
-        message: `⚠️ Late Handover: ${daysLate} days after booking end date`,
-        suggestion: 'Booking may need to be extended'
-      };
-    }
-    else if (handoverDateStr === startDateStr) {
+    if (handoverDateStr === startDateStr) {
       warning = {
         type: 'ontime',
         message: '✅ On-time handover on booking start date',
-        suggestion: 'Perfect timing for handover'
       };
     }
-    else if (handoverDateStr > startDateStr && handoverDateStr < endDateStr) {
-      const handoverDateObj = new Date(handoverDateStr);
-      const startDateObj = new Date(startDateStr);
-      const daysDelayed = Math.ceil((handoverDateObj - startDateObj) / (1000 * 60 * 60 * 24));
-
+    else if (handoverDateStr < startDateStr) {
       warning = {
-        type: 'delayed',
-        message: `⚠️ Delayed Handover: ${daysDelayed} days after start date`,
-        suggestion: 'Customer may be due for compensation'
+        type: 'early',
+        message: '🟡 Early handover before start date',
+      };
+    }
+    else if (handoverDateStr > startDateStr) {
+      warning = {
+        type: 'invalid',
+        message: '❌ Handover date cannot be after start date',
       };
     }
 
     setHandoverWarning(warning);
   };
 
-
   const handleChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
 
-    if (name === 'handover_datetime') {
+    if (name === 'handover_date') {
       // Clear future date error when user changes date
-      setErrors(prev => ({ ...prev, handover_datetime: '' }));
+      setErrors(prev => ({ ...prev, handover_date: '' }));
       if (selectedBookingDetails) {
         validateHandoverDate(value, selectedBookingDetails);
       }
@@ -193,7 +157,7 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
   };
 
   const validateForm = () => {
-    const requiredFields = ['booking_id', 'vehicle_id', 'handed_over_by', 'km_out', 'fuel_level_out'];
+    const requiredFields = ['booking_id', 'vehicle_id', 'handed_over_by', 'km_out', 'fuel_level_out', 'handover_date'];
     const newErrors = {};
 
     requiredFields.forEach(field => {
@@ -203,29 +167,30 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
           vehicle_id: 'Vehicle',
           handed_over_by: 'Handed Over By',
           km_out: 'Odometer Reading',
-          fuel_level_out: 'Fuel Level'
+          fuel_level_out: 'Fuel Level',
+          handover_date: 'Handover Date'
         };
         newErrors[field] = `${labels[field]} is required`;
       }
     });
 
-    // FIXED: Validate handover date is not in future (allow same day)
-    if (formData.handover_datetime) {
-      const handoverDate = new Date(formData.handover_datetime);
-      const now = new Date();
+    // Validate handover date against booking dates
+    if (selectedBookingDetails && formData.handover_date) {
+      const handoverDate = new Date(formData.handover_date);
+      const startDate = new Date(selectedBookingDetails.date_from.split('T')[0]);
+      const endDate = new Date(selectedBookingDetails.date_to.split('T')[0]);
 
-      // Reset time to beginning of day for date comparison
-      const handoverDateOnly = new Date(handoverDate.getFullYear(), handoverDate.getMonth(), handoverDate.getDate());
-      const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      // Reset time to midnight for comparison
+      handoverDate.setHours(0, 0, 0, 0);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
 
-      // Allow handover on current date or past dates, block future dates
-      if (handoverDateOnly > nowDateOnly) {
-        newErrors.handover_datetime = 'Handover date cannot be in the future';
+      if (handoverDate < startDate) {
+        newErrors.handover_date = `Handover date cannot be before booking start date (${startDate.toLocaleDateString()})`;
       }
-      // Also check if time is too far in future for same day
-      else if (handoverDateOnly.getTime() === nowDateOnly.getTime() && handoverDate > now) {
-        // Allow time up to 23:59 on current day, just show warning but don't block
-        console.log('Handover time is in the future on current day');
+
+      if (handoverDate > endDate) {
+        newErrors.handover_date = `Handover date cannot be after booking end date (${endDate.toLocaleDateString()})`;
       }
     }
 
@@ -340,7 +305,7 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
                 />
               </div>
             </div>
-            
+
             {/* Handed Over By */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
@@ -377,10 +342,17 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
                         validateHandoverDate(e.target.value, selectedBookingDetails);
                       }
                     }}
-                    max={new Date().toISOString().split('T')[0]} // Prevent future dates
-                    className={`w-full rounded-xl border ${errors.handover_date ? 'border-red-500' : 'border-slate-200'} bg-white pl-10 pr-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
+                    // ❌ REMOVE min completely (ya optional rakho)
+                    // min={minHandoverDate}
+
+                    // ✅ ONLY THIS
+                    max={maxHandoverDate}
+
+                    className={`w-full rounded-xl border ${errors.handover_date ? 'border-red-500' : 'border-slate-200'
+                      } bg-white pl-10 pr-4 py-2.5 text-sm outline-none transition focus:border-primary-500`}
                   />
                 </div>
+                {errors.handover_date && <p className="text-xs text-red-500">{errors.handover_date}</p>}
               </div>
 
               {/* Handover Time */}
@@ -399,7 +371,6 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
                 </div>
               </div>
             </div>
-
 
             {/* Booking Date Range Display */}
             {selectedBookingDetails && (
