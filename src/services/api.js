@@ -132,26 +132,25 @@ export const cashReceiptApi = {
     return response;
   },
 
-  // Get report by date range (returns array directly)
-  getReportData: async (params = {}) => {
-    const response = await api.get('/receipts/report-data', { params });
+  // ADD THIS METHOD - Get all customers with balance
+  getCustomersWithBalance: async (searchTerm = '') => {
+    const url = searchTerm 
+      ? `/receipts/customers/with-balance?search=${encodeURIComponent(searchTerm)}`
+      : '/receipts/customers/with-balance';
+    
+    const response = await api.get(url);
     return response;
   },
 
-  
-  // Get grouped data for charts
-  getGrouped: async (start_date, end_date, group_by = 'day') => {
-    const response = await api.get('/receipts/grouped', {
-      params: { start_date, end_date, group_by }
-    });
+  // ADD THIS METHOD - Get specific customer balance and bookings
+  getCustomerBalance: async (customerId) => {
+    const response = await api.get(`/receipts/customers/${customerId}/balance`);
     return response;
   },
 
-  // Get summary statistics
-  getSummary: async (start_date, end_date) => {
-    const response = await api.get('/receipts/summary', {
-      params: { start_date, end_date }
-    });
+  // Get single receipt
+  getById: async (id) => {
+    const response = await api.get(`/receipts/${id}`);
     return response;
   },
 
@@ -170,6 +169,17 @@ export const cashReceiptApi = {
   // Delete receipt
   delete: async (id) => {
     const response = await api.delete(`/receipts/${id}`);
+    return response;
+  },
+
+  // Add other methods as needed
+  getReport: async (params) => {
+    const response = await api.get('/receipts/report', { params });
+    return response;
+  },
+
+  getReportData: async (params) => {
+    const response = await api.get('/receipts/report-data', { params });
     return response;
   }
 };

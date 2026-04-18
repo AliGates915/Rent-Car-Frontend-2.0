@@ -34,7 +34,7 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
       const allCustomers = response.data.data || [];
       
       // Filter only customers with balance > 0
-      const customersWithBalance = allCustomers.filter(c => c.balance > 0);
+      const customersWithBalance = allCustomers.filter(c => Math.abs(c.balance) > 0);
       setCustomers(customersWithBalance);
       setFilteredCustomers(customersWithBalance);
     } catch (error) {
