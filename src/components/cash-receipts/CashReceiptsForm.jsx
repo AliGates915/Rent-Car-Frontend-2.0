@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { X, Search, User, AlertCircle, ChevronDown } from 'lucide-react';
-import { moduleApi, cashReceiptApi } from '../../services/api';
+import { X, Search, User, AlertCircle, ChevronDown, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { cashReceiptApi } from '../../services/api';
 
 export default function CashReceiptsForm({ config, editingRecord, onSuccess, onCancelEdit }) {
   const [loading, setLoading] = useState(false);
@@ -16,6 +16,7 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [remainingAmount, setRemainingAmount] = useState(0);
+  const [paymentDistribution, setPaymentDistribution] = useState(null);
   
   const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm({
     defaultValues: editingRecord || {
@@ -25,6 +26,7 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
   });
 
   const source = watch('source');
+  const amount = watch('amount');
 
   // Fetch customers with balance (only those who have balance)
   const fetchCustomers = async (searchTerm = '') => {
@@ -59,7 +61,7 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
     }
   }, [customerSearch, customers]);
 
-  // Fetch customer bookings with payment status
+  // Fetch customer bookings with payment status and owner earnings info
   const fetchCustomerBookings = async (customerId) => {
     try {
       const response = await cashReceiptApi.getCustomerBalance(customerId);
@@ -67,17 +69,27 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
         setSelectedCustomer(response.data.customer);
         // Filter only bookings with remaining amount > 0
         const unpaidBookings = (response.data.bookings || []).filter(b => b.remaining_amount > 0);
-        setCustomerBookings(unpaidBookings);
+        
+        // Enhance bookings with owner earnings info
+        const enhancedBookings = unpaidBookings.map(booking => ({
+          ...booking,
+          owner_remaining: booking.owner_earnings?.owner_amount || 0,
+          company_remaining: booking.owner_earnings?.company_amount || 0
+        }));
+        
+        setCustomerBookings(enhancedBookings);
         
         // Auto-select booking if only one exists
-        if (unpaidBookings.length === 1) {
-          const booking = unpaidBookings[0];
+        if (enhancedBookings.length === 1) {
+          const booking = enhancedBookings[0];
           setSelectedBooking(booking);
           setValue('reference_id', booking.id);
           setRemainingAmount(booking.remaining_amount);
+          setPaymentDistribution(null);
         } else {
           setSelectedBooking(null);
           setRemainingAmount(0);
+          setPaymentDistribution(null);
         }
       }
     } catch (error) {
@@ -86,10 +98,44 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
     }
   };
 
-  // Initial load of customers
+  // Calculate payment distribution preview
   useEffect(() => {
-    fetchCustomers();
-  }, []);
+    if (selectedBooking && amount && amount > 0) {
+      const paymentAmount = parseFloat(amount);
+      const maxAmount = selectedBooking.remaining_amount;
+      
+      if (paymentAmount <= maxAmount) {
+        // Calculate how this payment will be distributed
+        let remainingPayment = paymentAmount;
+        let companyPaid = 0;
+        let ownerPaid = 0;
+        
+        // First pay company share
+        const companyRemaining = selectedBooking.company_remaining || 0;
+        if (remainingPayment > 0 && companyRemaining > 0) {
+          companyPaid = Math.min(remainingPayment, companyRemaining);
+          remainingPayment -= companyPaid;
+        }
+        
+        // Then pay owner share
+        const ownerRemaining = selectedBooking.owner_remaining || 0;
+        if (remainingPayment > 0 && ownerRemaining > 0) {
+          ownerPaid = Math.min(remainingPayment, ownerRemaining);
+          remainingPayment -= ownerPaid;
+        }
+        
+        setPaymentDistribution({
+          companyPaid,
+          ownerPaid,
+          willBeFullyPaid: (companyRemaining - companyPaid) === 0 && (ownerRemaining - ownerPaid) === 0
+        });
+      } else {
+        setPaymentDistribution(null);
+      }
+    } else {
+      setPaymentDistribution(null);
+    }
+  }, [amount, selectedBooking]);
 
   // Handle customer selection
   const handleCustomerSelect = (customer) => {
@@ -106,12 +152,19 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
     setSelectedBooking(booking);
     setValue('reference_id', booking.id);
     setRemainingAmount(booking.remaining_amount);
+    setPaymentDistribution(null);
   };
 
   // Calculate max amount (remaining amount of selected booking)
   const maxAmount = selectedBooking ? selectedBooking.remaining_amount : 0;
 
   const onSubmit = async (data) => {
+    // Validate amount doesn't exceed remaining balance
+    if (source === 'booking' && selectedBooking && parseFloat(data.amount) > selectedBooking.remaining_amount) {
+      toast.error(`Amount cannot exceed remaining balance of ₨${selectedBooking.remaining_amount.toLocaleString()}`);
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {
@@ -131,18 +184,29 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
         payload.customer_id = data.customer_id;
       }
 
+      let response;
       if (editingRecord?.id) {
-        await moduleApi.update(config.endpoint, editingRecord.id, payload);
+        response = await cashReceiptApi.updateReceipt(editingRecord.id, payload);
         toast.success('Cash receipt updated successfully');
       } else {
-        await moduleApi.create(config.endpoint, payload);
+        response = await cashReceiptApi.createReceipt(payload);
         toast.success('Cash receipt created successfully');
+        
+        // Show payment distribution details if available
+        if (response.data.earnings_distribution) {
+          const dist = response.data.earnings_distribution;
+          toast.success(
+            `Payment distributed: Company ₨${dist.companyPaid.toLocaleString()} | Owner ₨${dist.ownerPaid.toLocaleString()}`,
+            { duration: 5000 }
+          );
+        }
       }
       
       reset();
       setSelectedCustomer(null);
       setSelectedBooking(null);
       setRemainingAmount(0);
+      setPaymentDistribution(null);
       setCustomerSearch('');
       onSuccess();
     } catch (error) {
@@ -209,7 +273,7 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
           {/* Customer Selection (for booking type) */}
           {source === 'booking' && (
             <>
-              <div className="relative">
+              <div className="relative md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Select Customer *
                 </label>
@@ -288,12 +352,12 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
 
               {/* Customer Balance Display */}
               {selectedCustomer && (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                <div className="md:col-span-2 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
                   <div className="flex items-center gap-2 mb-3">
                     <User size={18} className="text-blue-600" />
                     <span className="text-sm font-semibold text-gray-700">Selected Customer Details</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div>
                       <p className="text-xs text-gray-500">Name</p>
                       <p className="text-sm font-medium text-gray-900">{selectedCustomer.customer_name}</p>
@@ -327,56 +391,75 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
                       {customerBookings.map((booking) => (
                         <label
                           key={booking.id}
-                          className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                          className={`flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-all ${
                             selectedBooking?.id === booking.id
                               ? 'border-blue-500 bg-blue-50 shadow-sm'
                               : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                           }`}
                         >
-                          <input
-                            type="radio"
-                            name="booking"
-                            checked={selectedBooking?.id === booking.id}
-                            onChange={() => handleBookingSelect(booking)}
-                            className="mt-1.5"
-                          />
-                          <div className="flex-1">
-                            <div className="flex justify-between items-start mb-3">
-                              <div>
-                                <div className="font-semibold text-gray-900">
-                                  {booking.booking_code}
+                          <div className="flex items-start gap-3">
+                            <input
+                              type="radio"
+                              name="booking"
+                              checked={selectedBooking?.id === booking.id}
+                              onChange={() => handleBookingSelect(booking)}
+                              className="mt-1.5"
+                            />
+                            <div className="flex-1">
+                              <div className="flex justify-between items-start mb-3">
+                                <div>
+                                  <div className="font-semibold text-gray-900">
+                                    {booking.booking_code}
+                                  </div>
+                                  <div className="text-sm text-gray-600 mt-0.5">
+                                    {booking.car_make} {booking.car_model} • {booking.registration_no}
+                                  </div>
                                 </div>
-                                <div className="text-sm text-gray-600 mt-0.5">
-                                  {booking.car_make} {booking.car_model} • {booking.registration_no}
+                                <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                                  booking.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
+                                  booking.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-red-100 text-red-800'
+                                }`}>
+                                  {booking.payment_status?.toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
+                                <div>
+                                  <span className="text-gray-500">Total:</span>
+                                  <p className="font-medium text-gray-900">₨{booking.total_amount?.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Paid:</span>
+                                  <p className="font-medium text-green-600">₨{(booking.advance_amount + booking.paid_amount)?.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Remaining:</span>
+                                  <p className="font-medium text-red-600">₨{booking.remaining_amount?.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-500">Duration:</span>
+                                  <p className="font-medium text-gray-700 text-xs">
+                                    {new Date(booking.date_from).toLocaleDateString()} - {new Date(booking.date_to).toLocaleDateString()}
+                                  </p>
                                 </div>
                               </div>
-                              <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                                booking.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
-                                booking.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
-                                {booking.payment_status?.toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                              <div>
-                                <span className="text-gray-500">Total:</span>
-                                <p className="font-medium text-gray-900">₨{booking.total_amount?.toLocaleString()}</p>
-                              </div>
-                              <div>
-                                <span className="text-gray-500">Paid:</span>
-                                <p className="font-medium text-green-600">₨{(booking.advance_amount + booking.paid_amount)?.toLocaleString()}</p>
-                              </div>
-                              <div>
-                                <span className="text-gray-500">Remaining:</span>
-                                <p className="font-medium text-red-600">₨{booking.remaining_amount?.toLocaleString()}</p>
-                              </div>
-                              <div>
-                                <span className="text-gray-500">Duration:</span>
-                                <p className="font-medium text-gray-700 text-xs">
-                                  {new Date(booking.date_from).toLocaleDateString()} - {new Date(booking.date_to).toLocaleDateString()}
-                                </p>
-                              </div>
+                              
+                              {/* Owner Earnings Info */}
+                              {(booking.owner_remaining > 0 || booking.company_remaining > 0) && (
+                                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                  <p className="text-xs font-medium text-gray-700 mb-2">Outstanding Distribution:</p>
+                                  <div className="flex gap-4 text-sm">
+                                    <div>
+                                      <span className="text-gray-500">Company Share:</span>
+                                      <p className="font-semibold text-blue-600">₨{booking.company_remaining?.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-500">Owner Share:</span>
+                                      <p className="font-semibold text-purple-600">₨{booking.owner_remaining?.toLocaleString()}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </label>
@@ -445,6 +528,39 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
             )}
           </div>
 
+          {/* Payment Distribution Preview */}
+          {source === 'booking' && selectedBooking && amount && amount > 0 && paymentDistribution && (
+            <div className="md:col-span-2">
+              <div className={`p-4 rounded-lg border-2 ${paymentDistribution.willBeFullyPaid ? 'bg-green-50 border-green-300' : 'bg-yellow-50 border-yellow-300'}`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <DollarSign size={18} className={paymentDistribution.willBeFullyPaid ? 'text-green-600' : 'text-yellow-600'} />
+                  <span className="text-sm font-semibold text-gray-700">Payment Distribution Preview</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={16} className="text-blue-600" />
+                      <span className="text-sm text-gray-600">Company Gets:</span>
+                    </div>
+                    <span className="font-bold text-blue-600">₨{paymentDistribution.companyPaid.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <TrendingDown size={16} className="text-purple-600" />
+                      <span className="text-sm text-gray-600">Owner Gets:</span>
+                    </div>
+                    <span className="font-bold text-purple-600">₨{paymentDistribution.ownerPaid.toLocaleString()}</span>
+                  </div>
+                </div>
+                {paymentDistribution.willBeFullyPaid && (
+                  <div className="mt-3 p-2 bg-green-100 rounded text-center">
+                    <p className="text-xs font-medium text-green-800">✓ This booking will be fully paid after this payment!</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Hidden fields */}
           <input type="hidden" {...register('customer_id')} />
           <input type="hidden" {...register('reference_id')} />
@@ -476,7 +592,7 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
             disabled={loading}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Saving...' : editingRecord ? 'Update Receipt' : 'Create Receipt'}
+            {loading ? 'Processing...' : editingRecord ? 'Update Receipt' : 'Process Payment'}
           </button>
         </div>
       </form>

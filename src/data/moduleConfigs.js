@@ -33,6 +33,7 @@ export const moduleConfigs = {
     ],
     filters: [{ key: 'status', label: 'Status', options: ['', 'active', 'inactive'] }],
   },
+
   vehicles: {
     title: 'Vehicle Management',
     endpoint: '/vehicles',
@@ -99,6 +100,7 @@ export const moduleConfigs = {
       }
     ],
   },
+
   owners: {
     title: 'Owners',
     endpoint: '/owners',
@@ -135,7 +137,6 @@ export const moduleConfigs = {
       }
     ],
   },
-
 
   setup: {
     title: 'Setup Modules',
@@ -289,26 +290,27 @@ export const moduleConfigs = {
     endpoint: '/receipts',
     tabs: [
       { key: 'list', label: 'List' },
-      { key: 'form', label: 'Form' },
+      { key: 'form', label: 'Add Receipt' },
       { key: 'report', label: 'Report' },
     ],
     fields: [
-      { name: 'receipt_date', label: 'Receipt Date', type: 'date', required: true },
+      { name: 'customer_id', label: 'Customer', type: 'select', required: false, hidden: true },
       { name: 'received_from', label: 'Received From', required: true },
-      { name: 'head', label: 'Head', type: 'select', options: ['booking', 'deposit', 'other'] },
+      { name: 'source', label: 'Receipt Type', type: 'select', options: ['booking', 'general'], required: true },
+      { name: 'reference_id', label: 'Booking ID', type: 'number', required: false, hidden: true },
       { name: 'amount', label: 'Amount', type: 'number', required: true },
       { name: 'payment_method', label: 'Payment Method', type: 'select', options: ['cash', 'bank', 'easypaisa', 'jazzcash'] },
       { name: 'notes', label: 'Notes', type: 'textarea' },
     ],
     columns: [
-      { key: 'receipt_date', label: 'Date', type: 'date' },
+      { key: 'created_at', label: 'Date', type: 'date' },
       { key: 'received_from', label: 'Received From' },
-      { key: 'head', label: 'Head' },
       { key: 'amount', label: 'Amount', type: 'currency' },
       { key: 'payment_method', label: 'Method' },
+      { key: 'source', label: 'Type' },
     ],
     filters: [
-      { key: 'head', label: 'Head', options: ['booking', 'deposit', 'other'] },
+      { key: 'source', label: 'Receipt Type', options: ['booking', 'general'] },
       { key: 'payment_method', label: 'Payment Method', options: ['cash', 'bank', 'easypaisa', 'jazzcash'] },
     ]
   },

@@ -1,4 +1,4 @@
-// frontend/src/services/api.js
+// frontend/src/services/api.js (complete file)
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
@@ -37,10 +37,15 @@ api.interceptors.response.use(
   }
 );
 
+// Export the configured api instance as default
+export default api;
+
+// Auth API
 export const authApi = {
   login: (payload) => api.post('/auth/login', payload),
 };
 
+// Module API
 export const moduleApi = {
   getAll: async (endpoint, params = {}) => {
     const queryParams = new URLSearchParams();
@@ -76,17 +81,13 @@ export const moduleApi = {
 
   update: (endpoint, id, data) => api.put(`${endpoint}/${id}`, data),
 
-  // FIXED: Use PATCH method, not PUT
   patch: async (endpoint, idOrData, dataOrNull) => {
     let url, data;
 
-    // Handle different calling patterns
     if (typeof idOrData === 'object' || idOrData === undefined) {
-      // Pattern: patch('/bookings/10/status', { status: 'confirmed' })
       url = endpoint;
       data = idOrData;
     } else {
-      // Pattern: patch('/bookings', 10, { status: 'confirmed' })
       url = `${endpoint}/${idOrData}`;
       data = dataOrNull;
     }
@@ -101,7 +102,6 @@ export const moduleApi = {
     return await api.patch(url, data);
   },
 
-  // Convenience methods
   updateStatus: async (bookingId, status) => {
     return await api.patch(`/bookings/${bookingId}/status`, { status });
   },
@@ -113,81 +113,56 @@ export const moduleApi = {
   remove: (endpoint, id) => api.delete(`${endpoint}/${id}`),
 };
 
-
+// Cash Receipt API - NOW USING THE CONFIGURED api INSTANCE
 export const cashReceiptApi = {
-  // Get all receipts with customer names
-  getAll: async (params = {}) => {
-    const queryParams = new URLSearchParams();
-    Object.keys(params).forEach(key => {
-      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
-        queryParams.append(key, params[key]);
-      }
-    });
-
-    const url = queryParams.toString()
-      ? `/receipts?${queryParams.toString()}`
-      : '/receipts';
-
-    const response = await api.get(url);
-    return response;
-  },
-
-  // ADD THIS METHOD - Get all customers with balance
   getCustomersWithBalance: async (searchTerm = '') => {
-    const url = searchTerm 
-      ? `/receipts/customers/with-balance?search=${encodeURIComponent(searchTerm)}`
-      : '/receipts/customers/with-balance';
-    
-    const response = await api.get(url);
+    const response = await api.get('/receipts/customers-with-balance', {
+      params: { search: searchTerm }
+    });
     return response;
   },
 
-  // ADD THIS METHOD - Get specific customer balance and bookings
   getCustomerBalance: async (customerId) => {
     const response = await api.get(`/receipts/customers/${customerId}/balance`);
     return response;
   },
 
-  // Get single receipt
-  getById: async (id) => {
-    const response = await api.get(`/receipts/${id}`);
-    return response;
-  },
-
-  // Create receipt
-  create: async (data) => {
+  createReceipt: async (data) => {
     const response = await api.post('/receipts', data);
     return response;
   },
 
-  // Update receipt
-  update: async (id, data) => {
+  getAllReceipts: async (params = {}) => {
+    const response = await api.get('/receipts', { params });
+    return response;
+  },
+
+  getReceipt: async (id) => {
+    const response = await api.get(`/receipts/${id}`);
+    return response;
+  },
+
+  updateReceipt: async (id, data) => {
     const response = await api.put(`/receipts/${id}`, data);
     return response;
   },
 
-  // Delete receipt
-  delete: async (id) => {
+  deleteReceipt: async (id) => {
     const response = await api.delete(`/receipts/${id}`);
     return response;
   },
-
-  // Add other methods as needed
-  getReport: async (params) => {
-    const response = await api.get('/receipts/report', { params });
-    return response;
-  },
-
-  getReportData: async (params) => {
-    const response = await api.get('/receipts/report-data', { params });
+  getReportData: async (startDate, endDate) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    
+    const response = await api.get(`/receipts/report-data${params.toString() ? `?${params.toString()}` : ''}`);
     return response;
   }
 };
 
-
 // Vehicle API
 export const vehicleApi = {
-  // Get all vehicle types
   getVehicleTypes: async (params = {}) => {
     const queryParams = new URLSearchParams();
     Object.keys(params).forEach(key => {
@@ -204,33 +179,28 @@ export const vehicleApi = {
     return response;
   },
 
-  // Get single vehicle type
   getVehicleTypeById: async (id) => {
     const response = await api.get(`/vehicle-types/${id}`);
     return response;
   },
 
-  // Create vehicle type
   createVehicleType: async (data) => {
     const response = await api.post('/vehicle-types', data);
     return response;
   },
 
-  // Update vehicle type
   updateVehicleType: async (id, data) => {
     const response = await api.put(`/vehicle-types/${id}`, data);
     return response;
   },
 
-  // Delete vehicle type
   deleteVehicleType: async (id) => {
     const response = await api.delete(`/vehicle-types/${id}`);
     return response;
   }
 };
 
-
-// Helper function for fetching handovers (fixed)
+// Helper function for fetching handovers
 export const fetchHandovers = async (page = 1, limit = 10, search = '', status = '') => {
   try {
     const response = await moduleApi.getAll('/handovers', {
@@ -240,7 +210,6 @@ export const fetchHandovers = async (page = 1, limit = 10, search = '', status =
       status
     });
 
-    // Check if response has the expected structure
     if (response.data && response.data.data) {
       return {
         handovers: response.data.data,
@@ -271,5 +240,3 @@ export const fetchHandovers = async (page = 1, limit = 10, search = '', status =
     };
   }
 };
-
-export default api;

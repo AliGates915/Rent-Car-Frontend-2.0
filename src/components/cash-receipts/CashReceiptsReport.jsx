@@ -1,5 +1,6 @@
+// frontend/src/components/cash-receipts/CashReceiptsReport.jsx
 import { useState, useEffect } from 'react';
-import { Download, Printer, Loader } from 'lucide-react';
+import { Download, Printer, Loader, Calendar, Filter } from 'lucide-react';
 import api from '../../services/api';
 
 export default function CashReceiptsReport() {
@@ -11,6 +12,7 @@ export default function CashReceiptsReport() {
   const [receipts, setReceipts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showFilters, setShowFilters] = useState(true);
 
   // Fetch report data when date range changes
   useEffect(() => {
@@ -35,15 +37,19 @@ export default function CashReceiptsReport() {
       const response = await api.get(url);
       console.log('Response data:', response.data);
       
-      // The response should be an array directly
+      // Handle different response formats
+      let receiptsData = [];
       if (Array.isArray(response.data)) {
-        setReceipts(response.data);
+        receiptsData = response.data;
       } else if (response.data && Array.isArray(response.data.data)) {
-        setReceipts(response.data.data);
+        receiptsData = response.data.data;
+      } else if (response.data && response.data.receipts && Array.isArray(response.data.receipts)) {
+        receiptsData = response.data.receipts;
       } else {
-        setReceipts([]);
-        console.warn('Unexpected response format:', response.data);
+        receiptsData = [];
       }
+      
+      setReceipts(receiptsData);
     } catch (err) {
       console.error('Error fetching report:', err);
       setError(err.response?.data?.message || 'Failed to fetch report data');
@@ -55,6 +61,14 @@ export default function CashReceiptsReport() {
 
   const handleClearDates = () => {
     setDateRange({ startDate: '', endDate: '' });
+  };
+
+  const handleSetToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setDateRange({
+      startDate: today,
+      endDate: today
+    });
   };
 
   const handleSetCurrentWeek = () => {
@@ -115,28 +129,41 @@ export default function CashReceiptsReport() {
       if (!grouped[key]) {
         grouped[key] = {
           period: key,
+          date: date,
           count: 0,
           total: 0,
-          byMethod: { cash: 0, bank: 0, easypaisa: 0, jazzcash: 0 }
+          byMethod: { cash: 0, bank: 0, easypaisa: 0, jazzcash: 0 },
+          receipts: []
         };
       }
       
       grouped[key].count++;
       grouped[key].total += parseFloat(receipt.amount) || 0;
-      if (receipt.payment_method && grouped[key].byMethod.hasOwnProperty(receipt.payment_method)) {
-        grouped[key].byMethod[receipt.payment_method] += parseFloat(receipt.amount) || 0;
+      grouped[key].receipts.push(receipt);
+      
+      const method = receipt.payment_method?.toLowerCase();
+      if (method && grouped[key].byMethod.hasOwnProperty(method)) {
+        grouped[key].byMethod[method] += parseFloat(receipt.amount) || 0;
       }
     });
     
-    return Object.values(grouped);
+    // Sort groups by date
+    return Object.values(grouped).sort((a, b) => a.date - b.date);
+  };
+
+  // Get detailed receipts for selected period
+  const [selectedPeriod, setSelectedPeriod] = useState(null);
+  
+  const handlePeriodClick = (period) => {
+    setSelectedPeriod(selectedPeriod?.period === period.period ? null : period);
   };
 
   const groupedData = getGroupedData();
   const totalAmount = receipts?.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0) || 0;
-  const cashTotal = receipts?.filter(r => r.payment_method === 'cash').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0) || 0;
-  const bankTotal = receipts?.filter(r => r.payment_method === 'bank').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0) || 0;
-  const easypaisaTotal = receipts?.filter(r => r.payment_method === 'easypaisa').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0) || 0;
-  const jazzcashTotal = receipts?.filter(r => r.payment_method === 'jazzcash').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0) || 0;
+  const cashTotal = receipts?.filter(r => r.payment_method?.toLowerCase() === 'cash').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0) || 0;
+  const bankTotal = receipts?.filter(r => r.payment_method?.toLowerCase() === 'bank').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0) || 0;
+  const easypaisaTotal = receipts?.filter(r => r.payment_method?.toLowerCase() === 'easypaisa').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0) || 0;
+  const jazzcashTotal = receipts?.filter(r => r.payment_method?.toLowerCase() === 'jazzcash').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0) || 0;
 
   const handlePrint = () => {
     window.print();
@@ -148,10 +175,10 @@ export default function CashReceiptsReport() {
     const csvData = receipts.map(receipt => ({
       Date: new Date(receipt.receipt_date || receipt.created_at).toLocaleDateString(),
       'Received From': receipt.customer_name || receipt.source || 'General',
-      Head: receipt.source === 'booking' ? 'Booking Payment' : 'Customer Payment',
-      Amount: receipt.amount,
+      'Type': receipt.source === 'booking' ? 'Booking Payment' : 'General Receipt',
+      Amount: parseFloat(receipt.amount).toFixed(2),
       'Payment Method': receipt.payment_method?.toUpperCase() || '-',
-      'Reference ID': receipt.reference_id || '',
+      'Booking ID': receipt.reference_id || '',
       'Customer ID': receipt.customer_id || '',
       Notes: receipt.notes || ''
     }));
@@ -205,71 +232,85 @@ export default function CashReceiptsReport() {
     <div className="space-y-6">
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Start Date (Optional)
-            </label>
-            <input
-              type="date"
-              value={dateRange.startDate}
-              onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Filter size={20} className="text-gray-500" />
+            <h3 className="font-semibold text-gray-900">Filters</h3>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              End Date (Optional)
-            </label>
-            <input
-              type="date"
-              value={dateRange.endDate}
-              onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Group By
-            </label>
-            <select
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="day">Daily</option>
-              <option value="week">Weekly</option>
-              <option value="month">Monthly</option>
-            </select>
-          </div>
-          <div className="flex items-end gap-2">
-            <button
-              onClick={handleSetCurrentWeek}
-              className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              This Week
-            </button>
-            <button
-              onClick={handleSetCurrentMonth}
-              className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              This Month
-            </button>
-            <button
-              onClick={handleClearDates}
-              className="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-            >
-              Clear
-            </button>
-            <button
-              onClick={handleExportCSV}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              <Download size={16} />
-              Export
-            </button>
-          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="text-sm text-blue-600 hover:text-blue-700"
+          >
+            {showFilters ? 'Hide' : 'Show'} Filters
+          </button>
         </div>
+        
+        {showFilters && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={dateRange.startDate}
+                onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={dateRange.endDate}
+                onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Group By
+              </label>
+              <select
+                value={groupBy}
+                onChange={(e) => setGroupBy(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="day">Daily</option>
+                <option value="week">Weekly</option>
+                <option value="month">Monthly</option>
+              </select>
+            </div>
+            <div className="flex items-end gap-2">
+              <button
+                onClick={handleSetToday}
+                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Today
+              </button>
+              <button
+                onClick={handleSetCurrentWeek}
+                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                This Week
+              </button>
+              <button
+                onClick={handleSetCurrentMonth}
+                className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                This Month
+              </button>
+              <button
+                onClick={handleClearDates}
+                className="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -293,10 +334,25 @@ export default function CashReceiptsReport() {
         <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl shadow-lg p-4 text-white">
           <p className="text-sm opacity-90 mb-1">Bank/Mobile</p>
           <p className="text-2xl font-bold">₨ {(bankTotal + easypaisaTotal + jazzcashTotal).toLocaleString()}</p>
-          <p className="text-xs opacity-80 mt-1">
-            Bank: ₨ {bankTotal.toLocaleString()} | Mobile: ₨ {(easypaisaTotal + jazzcashTotal).toLocaleString()}
-          </p>
         </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={handleExportCSV}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+        >
+          <Download size={16} />
+          Export CSV
+        </button>
+        <button
+          onClick={handlePrint}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+        >
+          <Printer size={16} />
+          Print
+        </button>
       </div>
 
       {/* Grouped Report Table */}
@@ -316,6 +372,7 @@ export default function CashReceiptsReport() {
             {receipts.length > 0 && ` • Total: ${receipts.length} receipts`}
           </p>
         </div>
+        
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -331,15 +388,63 @@ export default function CashReceiptsReport() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {groupedData.map((group, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-900 font-medium">{group.period}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 text-right">{group.count}</td>
-                  <td className="px-6 py-4 text-sm text-green-600 text-right">₨ {group.byMethod.cash.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-purple-600 text-right">₨ {group.byMethod.bank.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-orange-600 text-right">₨ {group.byMethod.easypaisa.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-red-600 text-right">₨ {group.byMethod.jazzcash.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">₨ {group.total.toLocaleString()}</td>
-                </tr>
+                <>
+                  <tr 
+                    key={idx} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handlePeriodClick(group)}
+                  >
+                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                      <div className="flex items-center gap-2">
+                        <Calendar size={14} className="text-gray-400" />
+                        {group.period}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 text-right">{group.count}</td>
+                    <td className="px-6 py-4 text-sm text-green-600 text-right">₨ {group.byMethod.cash.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-sm text-purple-600 text-right">₨ {group.byMethod.bank.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-sm text-orange-600 text-right">₨ {group.byMethod.easypaisa.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-sm text-red-600 text-right">₨ {group.byMethod.jazzcash.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">₨ {group.total.toLocaleString()}</td>
+                  </tr>
+                  
+                  {/* Expanded details for selected period */}
+                  {selectedPeriod?.period === group.period && (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-4 bg-gray-50">
+                        <div className="space-y-2">
+                          <p className="text-sm font-semibold text-gray-700 mb-2">Receipt Details:</p>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="px-3 py-2 text-left">Date</th>
+                                  <th className="px-3 py-2 text-left">Received From</th>
+                                  <th className="px-3 py-2 text-right">Amount</th>
+                                  <th className="px-3 py-2 text-left">Method</th>
+                                  <th className="px-3 py-2 text-left">Type</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {group.receipts.map((receipt, ridx) => (
+                                  <tr key={ridx} className="border-b border-gray-200">
+                                    <td className="px-3 py-2">
+                                      {new Date(receipt.receipt_date || receipt.created_at).toLocaleDateString()}
+                                    </td>
+                                    <td className="px-3 py-2">{receipt.customer_name || 'Walk-in'}</td>
+                                    <td className="px-3 py-2 text-right font-medium">₨ {parseFloat(receipt.amount).toLocaleString()}</td>
+                                    <td className="px-3 py-2 capitalize">{receipt.payment_method || '-'}</td>
+                                    <td className="px-3 py-2 capitalize">{receipt.source || 'general'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
               ))}
               {groupedData.length === 0 && !loading && (
                 <tr>
