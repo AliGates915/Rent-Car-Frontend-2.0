@@ -1,6 +1,6 @@
 import { CarFront, ClipboardList, CreditCard, Users } from 'lucide-react';
 import { dashboardSummaryCards } from '../data/moduleConfigs';
-import ReportSection from '../components/ReportSection';
+import ReportSection from '../pages/ReportsPage';
 import TimelineSection from '../components/TimelineSection';
 
 const quickStats = [

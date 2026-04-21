@@ -339,6 +339,8 @@ export const moduleConfigs = {
       { key: 'payment_method', label: 'Method' },
     ],
   },
+
+
   maintenance: {
     title: 'Vehicle Maintenance',
     endpoint: '/maintenance',
@@ -388,22 +390,31 @@ export const moduleConfigs = {
     ],
   },
 
+
   reports: {
     title: 'Reports',
-    endpoint: '/reports',
+    endpoint: '/reports/profit-loss',
     tabs: [
       { key: 'profit-loss', label: 'Profit & Loss' },
       { key: 'daybook', label: 'Daybook' },
+      { key: 'expense', label: 'Expense Report' },
+      { key: 'receipt', label: 'Receipt Report' },
     ],
     fields: [],
     columns: [],
+    reportTypes: {  // Add this property
+      'profit-loss': { endpoint: '/reports/profit-loss', method: 'GET' },
+      'daybook': { endpoint: '/reports/daybook', method: 'GET' },
+      'expense': { endpoint: '/reports/expense', method: 'GET' },
+      'receipt': { endpoint: '/reports/receipt', method: 'GET' },
+    },
   },
+
   daybook: {
     title: 'Daybook',
     endpoint: '/daybook',
     tabs: [
       { key: 'list', label: 'List' },
-      { key: 'summary', label: 'Summary' },
     ],
     fields: [],
     columns: [

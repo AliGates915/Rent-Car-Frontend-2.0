@@ -1,4 +1,3 @@
-// frontend/src/services/api.js (complete file)
 import axios from 'axios';
 import toast from 'react-hot-toast';
 

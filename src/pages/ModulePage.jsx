@@ -1,11 +1,10 @@
-// frontend/src/pages/ModulePage.jsx
 import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Plus } from 'lucide-react';
 import TabComponent from '../components/ui/TabComponent';
 import GenericForm from '../components/GenericForm';
 import DataTable from '../components/ui/DataTable';
-import ReportSection from '../components/ReportSection';
+import ReportSection from '../components/reports/ReportSection';
 import TimelineSection from '../components/TimelineSection';
 import EmptyState from '../components/ui/EmptyState';
 import { moduleConfigs } from '../data/moduleConfigs';
@@ -33,6 +32,7 @@ import ReturnListView from '../components/return/ReturnListView';
 import CashReceiptsForm from '../components/cash-receipts/CashReceiptsForm';
 import CashReceiptsListView from '../components/cash-receipts/CashReceiptsListView';
 import CashReceiptsReport from '../components/cash-receipts/CashReceiptsReport';
+import ReportsPage from './ReportsPage';
 
 function buildFilters(config, filterValues) {
   if (!config?.filters || !Array.isArray(config.filters)) {
@@ -43,7 +43,7 @@ function buildFilters(config, filterValues) {
     .filter(filter => filter && filter.key)
     .map((filter) => {
       let options = [];
-      
+
       if (filter.options && Array.isArray(filter.options)) {
         options = filter.options.map(opt => {
           if (typeof opt === 'object' && opt !== null) {
@@ -58,12 +58,12 @@ function buildFilters(config, filterValues) {
           };
         });
       } else {
-        options = [{ 
-          label: `All ${filter.label || filter.key}`, 
-          value: '' 
+        options = [{
+          label: `All ${filter.label || filter.key}`,
+          value: ''
         }];
       }
-      
+
       return {
         key: filter.key,
         value: filterValues[filter.key] || '',
@@ -77,8 +77,27 @@ function PlaceholderContent({ title }) {
   return <EmptyState title={`${title} section`} description="Connect this tab with your dedicated API endpoint to populate records, files, or related references." />;
 }
 
+
 export default function ModulePage({ moduleKey }) {
   const config = moduleConfigs[moduleKey];
+
+  // Special handling for reports module
+  if (moduleKey === 'reports') {
+    return (
+      <div className="space-y-5">
+        <div className="flex flex-col gap-3">
+          <TabComponent
+            tabs={config.tabs}
+            activeTab={config.tabs[0]?.key}
+            onChange={() => { }} // ReportsPage handles its own tabs
+          />
+        </div>
+        <div className="animate-in fade-in-50 duration-300">
+          <ReportsPage />
+        </div>
+      </div>
+    );
+  }
 
   // For setup module, use special handling
   if (moduleKey === 'setup') {
@@ -255,7 +274,7 @@ function RegularModulePage({ moduleKey, config }) {
             />
           );
         }
-        
+
         if (moduleKey === 'cash-receipts') {
           return (
             <CashReceiptsListView
@@ -285,7 +304,7 @@ function RegularModulePage({ moduleKey, config }) {
             />
           );
         }
-        
+
         if (moduleKey === 'bookings') {
           return (
             <BookingListView
@@ -311,7 +330,7 @@ function RegularModulePage({ moduleKey, config }) {
             />
           );
         }
-        
+
         if (moduleKey === 'handover') {
           return (
             <HandoverListView
@@ -337,35 +356,35 @@ function RegularModulePage({ moduleKey, config }) {
             />
           );
         }
-        
+
         if (moduleKey === 'return') {
           return (
             <ReturnListView
-            returns={data}
-            loading={loading}
-            search={search}
-            onSearch={setSearch}
-            filters={buildFilters(config, filterValues)}
-            filterValues={filterValues}
-            onFilterChange={(key, value) => {
-              setPage(1);
-              setFilterValues((prev) => ({ ...prev, [key]: value }));
-            }}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            page={page}
-            total={meta.total}
-            limit={meta.limit}
-            onPageChange={setPage}
+              returns={data}
+              loading={loading}
+              search={search}
+              onSearch={setSearch}
+              filters={buildFilters(config, filterValues)}
+              filterValues={filterValues}
+              onFilterChange={(key, value) => {
+                setPage(1);
+                setFilterValues((prev) => ({ ...prev, [key]: value }));
+              }}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              page={page}
+              total={meta.total}
+              limit={meta.limit}
+              onPageChange={setPage}
             // summary={summary} 
-          />
+            />
           );
         }
-        
+
         if (moduleKey === 'owner-earnings') {
           return <OwnerEarningsManager />;
         }
-        
+
         // Default DataTable for other modules
         return (
           <DataTable
@@ -395,7 +414,7 @@ function RegularModulePage({ moduleKey, config }) {
         if (moduleKey === 'bookings') {
           return <BookingHistory />;
         }
-        
+
         return (
           <DataTable
             title={`${config.title} History`}
@@ -431,16 +450,19 @@ function RegularModulePage({ moduleKey, config }) {
         return <PlaceholderContent title={activeTab} />;
 
       case 'report':
-        if (moduleKey === 'cash-receipts') {
-          return <CashReceiptsReport />;
+        // Use the standalone reports page for the reports module
+        if (moduleKey === 'reports') {
+          return <ReportsPage />;
         }
-        return <ReportSection title={config.title} />;
 
-      case 'summary':
       case 'profit-loss':
       case 'daybook':
-      case 'due':
-        return <ReportSection title={config.title} />;
+      case 'expense':
+      case 'receipt':
+      case 'report':
+
+        // Fallback to ReportSection for other modules
+        return <ReportSection config={config} reportType={activeTab} />;
 
       case 'documents':
         if (moduleKey === 'vehicles') {
