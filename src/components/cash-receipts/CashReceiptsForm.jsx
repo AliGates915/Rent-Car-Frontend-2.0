@@ -430,7 +430,7 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
                                 </div>
                                 <div>
                                   <span className="text-gray-500">Paid:</span>
-                                  <p className="font-medium text-green-600">₨{(booking.advance_amount + booking.paid_amount)?.toLocaleString()}</p>
+                                  <p className="font-medium text-green-600">₨{(booking.paid_amount)?.toLocaleString()}</p>
                                 </div>
                                 <div>
                                   <span className="text-gray-500">Remaining:</span>
@@ -528,38 +528,7 @@ export default function CashReceiptsForm({ config, editingRecord, onSuccess, onC
             )}
           </div>
 
-          {/* Payment Distribution Preview */}
-          {source === 'booking' && selectedBooking && amount && amount > 0 && paymentDistribution && (
-            <div className="md:col-span-2">
-              <div className={`p-4 rounded-lg border-2 ${paymentDistribution.willBeFullyPaid ? 'bg-green-50 border-green-300' : 'bg-yellow-50 border-yellow-300'}`}>
-                <div className="flex items-center gap-2 mb-3">
-                  <DollarSign size={18} className={paymentDistribution.willBeFullyPaid ? 'text-green-600' : 'text-yellow-600'} />
-                  <span className="text-sm font-semibold text-gray-700">Payment Distribution Preview</span>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp size={16} className="text-blue-600" />
-                      <span className="text-sm text-gray-600">Company Gets:</span>
-                    </div>
-                    <span className="font-bold text-blue-600">₨{paymentDistribution.companyPaid.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
-                    <div className="flex items-center gap-2">
-                      <TrendingDown size={16} className="text-purple-600" />
-                      <span className="text-sm text-gray-600">Owner Gets:</span>
-                    </div>
-                    <span className="font-bold text-purple-600">₨{paymentDistribution.ownerPaid.toLocaleString()}</span>
-                  </div>
-                </div>
-                {paymentDistribution.willBeFullyPaid && (
-                  <div className="mt-3 p-2 bg-green-100 rounded text-center">
-                    <p className="text-xs font-medium text-green-800">✓ This booking will be fully paid after this payment!</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+        
 
           {/* Hidden fields */}
           <input type="hidden" {...register('customer_id')} />

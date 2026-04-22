@@ -199,16 +199,16 @@ function ProfitLossReport({ data }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-green-50 rounded-lg p-4 border border-green-200">
           <p className="text-sm text-green-600 font-medium">Total Income</p>
-          <p className="text-2xl font-bold text-green-700">₹{total_income?.toLocaleString() || 0}</p>
+          <p className="text-2xl font-bold text-green-700">Rs.{total_income?.toLocaleString() || 0}</p>
         </div>
         <div className="bg-red-50 rounded-lg p-4 border border-red-200">
           <p className="text-sm text-red-600 font-medium">Total Expenses</p>
-          <p className="text-2xl font-bold text-red-700">₹{total_expense?.toLocaleString() || 0}</p>
+          <p className="text-2xl font-bold text-red-700">Rs.{total_expense?.toLocaleString() || 0}</p>
         </div>
         <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
           <p className="text-sm text-blue-600 font-medium">Net Profit/Loss</p>
           <p className={`text-2xl font-bold ${net_profit >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
-            ₹{net_profit?.toLocaleString() || 0}
+            Rs.{net_profit?.toLocaleString() || 0}
           </p>
         </div>
       </div>
@@ -222,8 +222,8 @@ function ProfitLossReport({ data }) {
                 <tr><th className="px-4 py-2 text-left">Category</th><th className="px-4 py-2 text-right">Amount</th></tr>
               </thead>
               <tbody>
-                <tr className="border-t"><td className="px-4 py-2">Payments</td><td className="px-4 py-2 text-right">₹{breakdown?.payments?.toLocaleString() || 0}</td></tr>
-                <tr className="border-t"><td className="px-4 py-2">Receipts</td><td className="px-4 py-2 text-right">₹{breakdown?.receipts?.toLocaleString() || 0}</td></tr>
+                <tr className="border-t"><td className="px-4 py-2">Payments</td><td className="px-4 py-2 text-right">Rs.{breakdown?.payments?.toLocaleString() || 0}</td></tr>
+                <tr className="border-t"><td className="px-4 py-2">Receipts</td><td className="px-4 py-2 text-right">Rs.{breakdown?.receipts?.toLocaleString() || 0}</td></tr>
               </tbody>
             </table>
           </div>
@@ -234,9 +234,9 @@ function ProfitLossReport({ data }) {
                 <tr><th className="px-4 py-2 text-left">Category</th><th className="px-4 py-2 text-right">Amount</th></tr>
               </thead>
               <tbody>
-                <tr className="border-t"><td className="px-4 py-2">Expenses</td><td className="px-4 py-2 text-right">₹{breakdown?.expenses?.toLocaleString() || 0}</td></tr>
-                <tr className="border-t"><td className="px-4 py-2">Maintenance</td><td className="px-4 py-2 text-right">₹{breakdown?.maintenance?.toLocaleString() || 0}</td></tr>
-                <tr className="border-t"><td className="px-4 py-2">Owner Payout</td><td className="px-4 py-2 text-right">₹{breakdown?.owner_payout?.toLocaleString() || 0}</td></tr>
+                <tr className="border-t"><td className="px-4 py-2">Expenses</td><td className="px-4 py-2 text-right">Rs.{breakdown?.expenses?.toLocaleString() || 0}</td></tr>
+                <tr className="border-t"><td className="px-4 py-2">Maintenance</td><td className="px-4 py-2 text-right">Rs.{breakdown?.maintenance?.toLocaleString() || 0}</td></tr>
+                <tr className="border-t"><td className="px-4 py-2">Owner Payout</td><td className="px-4 py-2 text-right">Rs.{breakdown?.owner_payout?.toLocaleString() || 0}</td></tr>
               </tbody>
             </table>
           </div>
@@ -259,7 +259,7 @@ function ExpenseReport({ data }) {
     <div className="space-y-4">
       <div className="bg-gray-50 rounded-lg p-4">
         <div className="grid grid-cols-2 gap-4">
-          <div><p className="text-sm text-gray-600">Total Expenses</p><p className="text-2xl font-bold text-red-600">₹{total.toLocaleString()}</p></div>
+          <div><p className="text-sm text-gray-600">Total Expenses</p><p className="text-2xl font-bold text-red-600">Rs.{total.toLocaleString()}</p></div>
           <div><p className="text-sm text-gray-600">Number of Transactions</p><p className="text-2xl font-bold text-gray-800">{expenses.length}</p></div>
         </div>
       </div>
@@ -271,7 +271,7 @@ function ExpenseReport({ data }) {
               <th className="px-4 py-2 text-left">Date</th>
               <th className="px-4 py-2 text-left">Category</th>
               <th className="px-4 py-2 text-left">Description</th>
-              <th className="px-4 py-2 text-right">Amount (₹)</th>
+              <th className="px-4 py-2 text-right">Amount (Rs.)</th>
             </tr>
           </thead>
           <tbody>
@@ -280,7 +280,7 @@ function ExpenseReport({ data }) {
                 <td className="px-4 py-2">{format(new Date(expense.created_at), 'dd MMM yyyy')}</td>
                 <td className="px-4 py-2">{expense.category || 'General'}</td>
                 <td className="px-4 py-2">{expense.description || expense.remarks || '-'}</td>
-                <td className="px-4 py-2 text-right font-medium">₹{Number(expense.amount || 0).toLocaleString()}</td>
+                <td className="px-4 py-2 text-right font-medium">Rs.{Number(expense.amount || 0).toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
@@ -303,7 +303,7 @@ function ReceiptReport({ data }) {
     <div className="space-y-4">
       <div className="bg-gray-50 rounded-lg p-4">
         <div className="grid grid-cols-2 gap-4">
-          <div><p className="text-sm text-gray-600">Total Receipts</p><p className="text-2xl font-bold text-green-600">₹{total.toLocaleString()}</p></div>
+          <div><p className="text-sm text-gray-600">Total Receipts</p><p className="text-2xl font-bold text-green-600">Rs.{total.toLocaleString()}</p></div>
           <div><p className="text-sm text-gray-600">Number of Receipts</p><p className="text-2xl font-bold text-gray-800">{receipts.length}</p></div>
         </div>
       </div>
@@ -316,7 +316,7 @@ function ReceiptReport({ data }) {
               <th className="px-4 py-2 text-left">Date</th>
               <th className="px-4 py-2 text-left">Customer Name</th>
               <th className="px-4 py-2 text-left">Payment Method</th>
-              <th className="px-4 py-2 text-right">Amount (₹)</th>
+              <th className="px-4 py-2 text-right">Amount (Rs.)</th>
             </tr>
           </thead>
           <tbody>
@@ -326,7 +326,7 @@ function ReceiptReport({ data }) {
                 <td className="px-4 py-2">{format(new Date(receipt.created_at), 'dd MMM yyyy')}</td>
                 <td className="px-4 py-2">{receipt.customer_name || receipt.customerName || '-'}</td>
                 <td className="px-4 py-2">{receipt.payment_method || receipt.paymentMethod || 'Cash'}</td>
-                <td className="px-4 py-2 text-right font-medium">₹{Number(receipt.amount || 0).toLocaleString()}</td>
+                <td className="px-4 py-2 text-right font-medium">Rs.{Number(receipt.amount || 0).toLocaleString()}</td>
               </tr>
             ))}
           </tbody>

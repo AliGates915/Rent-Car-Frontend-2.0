@@ -17,7 +17,6 @@ const navigation = [
   { label: 'Expenses', to: '/expenses', icon: CreditCard },
   { label: 'Maintenance', to: '/maintenance', icon: Wrench },
   { label: 'Reports', to: '/reports', icon: ChartColumnBig },
-  { label: 'Daybook', to: '/daybook', icon: ChartColumnBig },
 ];
 
 export default function Sidebar({ open, onClose }) {
@@ -39,7 +38,7 @@ export default function Sidebar({ open, onClose }) {
       >
         <div className="border-b border-slate-800 px-6 py-5">
           <p className="text-xs uppercase tracking-[0.3em] text-primary-100">Admin Panel</p>
-          <h1 className="mt-2 text-2xl font-bold">Rent Car ERP</h1>
+          <h1 className="mt-2 text-2xl font-bold">Rent a Car</h1>
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-4 py-5">

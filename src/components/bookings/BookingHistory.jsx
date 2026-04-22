@@ -194,7 +194,7 @@ export default function BookingHistory() {
         <div className="text-sm">
           <div className="font-semibold">Rs. {(row.total_amount || 0).toLocaleString()}</div>
           <div className="text-xs text-green-600">Paid: Rs. {(row.paid_amount || 0).toLocaleString()}</div>
-          <div className="text-xs text-orange-600">Advance: Rs. {(row.advance_amount || 0).toLocaleString()}</div>
+          <div className="text-xs text-orange-600">Remaining: Rs. {((row.total_amount || 0)- (row.paid_amount || 0)).toLocaleString()}</div>
         </div>
       )
     },

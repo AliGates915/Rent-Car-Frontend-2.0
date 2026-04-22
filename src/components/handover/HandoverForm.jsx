@@ -157,7 +157,7 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
   };
 
   const validateForm = () => {
-    const requiredFields = ['booking_id', 'vehicle_id', 'handed_over_by', 'km_out', 'fuel_level_out', 'handover_date'];
+    const requiredFields = ['booking_id', 'vehicle_id', 'handed_over_by', 'handover_date'];
     const newErrors = {};
 
     requiredFields.forEach(field => {
@@ -166,8 +166,6 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
           booking_id: 'Booking',
           vehicle_id: 'Vehicle',
           handed_over_by: 'Handed Over By',
-          km_out: 'Odometer Reading',
-          fuel_level_out: 'Fuel Level',
           handover_date: 'Handover Date'
         };
         newErrors[field] = `${labels[field]} is required`;
@@ -410,7 +408,7 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
             {/* Odometer Out */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
-                Odometer Reading (km) <span className="text-red-500">*</span>
+                Odometer Reading (km) 
               </label>
               <div className="relative">
                 <Gauge className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -423,13 +421,12 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
                   min="0"
                 />
               </div>
-              {errors.km_out && <p className="text-xs text-red-500">{errors.km_out}</p>}
             </div>
 
             {/* Fuel Level Out */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
-                Fuel Level <span className="text-red-500">*</span>
+                Fuel Level 
               </label>
               <div className="relative">
                 <Fuel className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -446,7 +443,6 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
                   <option value="Empty">Empty</option>
                 </select>
               </div>
-              {errors.fuel_level_out && <p className="text-xs text-red-500">{errors.fuel_level_out}</p>}
             </div>
 
             {/* Notes */}

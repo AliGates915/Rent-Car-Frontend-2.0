@@ -108,16 +108,16 @@ export default function DaybookReport() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                         <p className="text-sm text-blue-600 font-medium">Total Debit</p>
-                        <p className="text-2xl font-bold text-blue-700">₹{total_debit?.toLocaleString() || 0}</p>
+                        <p className="text-2xl font-bold text-blue-700">Rs.{total_debit?.toLocaleString() || 0}</p>
                     </div>
                     <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
                         <p className="text-sm text-orange-600 font-medium">Total Credit</p>
-                        <p className="text-2xl font-bold text-orange-700">₹{total_credit?.toLocaleString() || 0}</p>
+                        <p className="text-2xl font-bold text-orange-700">Rs.{total_credit?.toLocaleString() || 0}</p>
                     </div>
                     <div className={`rounded-lg p-4 border ${closing_balance >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
                         <p className={`text-sm font-medium ${closing_balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>Closing Balance</p>
                         <p className={`text-2xl font-bold ${closing_balance >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                            ₹{closing_balance?.toLocaleString() || 0}
+                            Rs.{closing_balance?.toLocaleString() || 0}
                         </p>
                     </div>
                 </div>
@@ -131,9 +131,9 @@ export default function DaybookReport() {
                                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Type</th>
                                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Description</th>
                                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Reference</th>
-                                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Debit (₹)</th>
-                                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Credit (₹)</th>
-                                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Balance (₹)</th>
+                                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Debit (Rs.)</th>
+                                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Credit (Rs.)</th>
+                                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Balance (Rs.)</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
@@ -157,13 +157,13 @@ export default function DaybookReport() {
                                         {entry.reference || '-'}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-right font-medium text-gray-900">
-                                        ₹{entry.debit?.toLocaleString() || 0}
+                                        Rs.{entry.debit?.toLocaleString() || 0}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-right font-medium text-gray-900">
-                                        ₹{entry.credit?.toLocaleString() || 0}
+                                        Rs.{entry.credit?.toLocaleString() || 0}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
-                                        ₹{entry.balance?.toLocaleString() || 0}
+                                        Rs.{entry.balance?.toLocaleString() || 0}
                                     </td>
                                 </tr>
                             ))}
@@ -172,13 +172,13 @@ export default function DaybookReport() {
                             <tr>
                                 <td colSpan="4" className="px-4 py-3 text-right font-semibold text-gray-900">Total:</td>
                                 <td className="px-4 py-3 text-right font-semibold text-blue-600">
-                                    ₹{total_debit?.toLocaleString() || 0}
+                                    Rs.{total_debit?.toLocaleString() || 0}
                                 </td>
                                 <td className="px-4 py-3 text-right font-semibold text-orange-600">
-                                    ₹{total_credit?.toLocaleString() || 0}
+                                    Rs.{total_credit?.toLocaleString() || 0}
                                 </td>
                                 <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                                    ₹{closing_balance?.toLocaleString() || 0}
+                                    Rs.{closing_balance?.toLocaleString() || 0}
                                 </td>
                             </tr>
                         </tfoot>

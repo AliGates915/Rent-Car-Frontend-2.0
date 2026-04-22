@@ -202,6 +202,7 @@ export default function ReportSection({ config, reportType }) {
 // Fixed ProfitLossReport component
 function ProfitLossReport({ data }) {
   const { total_income, total_expense, net_profit, breakdown } = data;
+  // console.log(data);
 
   return (
     <div className="space-y-6">
@@ -231,7 +232,7 @@ function ProfitLossReport({ data }) {
                 <tr><th className="px-4 py-2 text-left">Category</th><th className="px-4 py-2 text-right">Amount</th></tr>
               </thead>
               <tbody>
-                <tr className="border-t"><td className="px-4 py-2">Payments</td><td className="px-4 py-2 text-right">Rs.{breakdown?.payments?.toLocaleString() || 0}</td></tr>
+                <tr className="border-t"><td className="px-4 py-2">Payments</td><td className="px-4 py-2 text-right">Rs.{total_income || 0}</td></tr>
                 <tr className="border-t"><td className="px-4 py-2">Receipts</td><td className="px-4 py-2 text-right">Rs.{breakdown?.receipts?.toLocaleString() || 0}</td></tr>
               </tbody>
             </table>

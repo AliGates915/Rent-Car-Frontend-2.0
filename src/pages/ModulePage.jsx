@@ -33,6 +33,7 @@ import CashReceiptsForm from '../components/cash-receipts/CashReceiptsForm';
 import CashReceiptsListView from '../components/cash-receipts/CashReceiptsListView';
 import CashReceiptsReport from '../components/cash-receipts/CashReceiptsReport';
 import ReportsPage from './ReportsPage';
+import DaybookReport from '../components/reports/DaybookReport';
 
 function buildFilters(config, filterValues) {
   if (!config?.filters || !Array.isArray(config.filters)) {
@@ -82,22 +83,22 @@ export default function ModulePage({ moduleKey }) {
   const config = moduleConfigs[moduleKey];
 
   // Special handling for reports module
-  if (moduleKey === 'reports') {
-    return (
-      <div className="space-y-5">
-        <div className="flex flex-col gap-3">
-          <TabComponent
-            tabs={config.tabs}
-            activeTab={config.tabs[0]?.key}
-            onChange={() => { }} // ReportsPage handles its own tabs
-          />
-        </div>
-        <div className="animate-in fade-in-50 duration-300">
-          <ReportsPage />
-        </div>
-      </div>
-    );
-  }
+  // if (moduleKey === 'reports') {
+  //   return (
+  //     <div className="space-y-5">
+  //       <div className="flex flex-col gap-3">
+  //         <TabComponent
+  //           tabs={config.tabs}
+  //           activeTab={config.tabs[0]?.key}
+  //           onChange={() => { }} // ReportsPage handles its own tabs
+  //         />
+  //       </div>
+  //       <div className="animate-in fade-in-50 duration-300">
+  //         <ReportsPage />
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   // For setup module, use special handling
   if (moduleKey === 'setup') {
@@ -456,14 +457,11 @@ function RegularModulePage({ moduleKey, config }) {
         }
 
       case 'profit-loss':
-      case 'daybook':
       case 'expense':
       case 'receipt':
-      case 'report':
-
-        // Fallback to ReportSection for other modules
         return <ReportSection config={config} reportType={activeTab} />;
-
+        case 'daybook':
+          return <DaybookReport />;
       case 'documents':
         if (moduleKey === 'vehicles') {
           return <VehicleDocumentsManager />;

@@ -35,7 +35,6 @@ export default function App() {
         <Route path="owners" element={<ModuleRoute moduleKey="owners" />} />
         <Route path="owner-earnings" element={<ModuleRoute moduleKey="owner-earnings" />} />
         <Route path="reports" element={<ModuleRoute moduleKey="reports" />} />
-        <Route path="daybook" element={<ModuleRoute moduleKey="daybook" />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
