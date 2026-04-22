@@ -16,6 +16,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const response = await authApi.login(form);
+      console.log("reponse  ", response);
+      
       const token = response?.data?.token || 'demo-admin-token';
       const user = response?.data?.user || { name: 'Admin User', role: 'admin', email: form.email };
       localStorage.setItem('token', token);

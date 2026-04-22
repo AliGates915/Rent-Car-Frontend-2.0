@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { dashboardService } from '../services/dashboardService';
 import RevenueChart from '../components/RevenueChart';
-import TimelineSection from '../components/TimelineSection';
 import { toast } from 'sonner';
 
 export default function DashboardPage() {
