@@ -80,28 +80,16 @@ export const moduleApi = {
 
   update: (endpoint, id, data) => api.put(`${endpoint}/${id}`, data),
 
-  patch: async (endpoint, idOrData, dataOrNull) => {
-    let url, data;
-
-    if (typeof idOrData === 'object' || idOrData === undefined) {
-      url = endpoint;
-      data = idOrData;
-    } else {
-      url = `${endpoint}/${idOrData}`;
-      data = dataOrNull;
+  // Simplified patch method
+  patch: async (endpoint, data = null) => {
+    if (data) {
+      return await api.patch(endpoint, data);
     }
-
-    if (data instanceof FormData) {
-      return await api.patch(url, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-    }
-    return await api.patch(url, data);
+    return await api.patch(endpoint);
   },
 
-  updateStatus: async (bookingId, status) => {
+  // Dedicated methods for bookings
+  updateBookingStatus: async (bookingId, status) => {
     return await api.patch(`/bookings/${bookingId}/status`, { status });
   },
 

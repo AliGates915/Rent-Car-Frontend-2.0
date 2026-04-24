@@ -86,53 +86,93 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
   // Auto-populate vehicle and validate handover date when booking is selected
   const handleBookingChange = async (bookingId) => {
     if (bookingId) {
-      const response = await moduleApi.getOne('/bookings', bookingId);
-      const booking = response.data;
-
-      const startDate = booking.date_from.split('T')[0];
-
-      // ✅ Only MAX date set karo
-      setMaxHandoverDate(startDate);
-
+      try {
+        setLoading(true);
+        const response = await moduleApi.getOne('/bookings', bookingId);
+        
+        // Handle nested response structure
+        let booking = response.data;
+        if (booking.data) {
+          booking = booking.data;
+        }
+        
+        console.log('Selected booking:', booking);
+        
+        const startDate = booking.date_from ? booking.date_from.split('T')[0] : '';
+        
+        // Set max handover date
+        setMaxHandoverDate(startDate);
+        
+        // Store full booking details
+        setSelectedBookingDetails(booking);
+        
+        setFormData(prev => ({
+          ...prev,
+          booking_id: bookingId,
+          vehicle_id: booking.vehicle_id,
+          handover_date: startDate
+        }));
+        
+        // Validate the initial handover date
+        validateHandoverDate(startDate, booking);
+        
+      } catch (error) {
+        console.error('Error fetching booking:', error);
+        toast.error('Failed to load booking details');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setSelectedBookingDetails(null);
       setFormData(prev => ({
         ...prev,
-        booking_id: bookingId,
-        vehicle_id: booking.vehicle_id,
-        handover_date: startDate
+        booking_id: '',
+        vehicle_id: '',
+        handover_date: ''
       }));
+      setMaxHandoverDate('');
+      setHandoverWarning(null);
     }
   };
+  
 
-  // Update validation function to use date only
   const validateHandoverDate = (handoverDate, booking = selectedBookingDetails) => {
     if (!handoverDate || !booking) return;
-
-    const handoverDateStr = handoverDate;
-    const startDateStr = booking.date_from.split('T')[0];
-
+    
+    // Convert both to Date objects for proper comparison
+    const handoverDateObj = new Date(handoverDate);
+    const startDateObj = new Date(booking.date_from.split('T')[0]);
+    
+    // Reset time to midnight for accurate date comparison
+    handoverDateObj.setHours(0, 0, 0, 0);
+    startDateObj.setHours(0, 0, 0, 0);
+    
     let warning = null;
-
-    if (handoverDateStr === startDateStr) {
+    
+    if (handoverDateObj.getTime() === startDateObj.getTime()) {
       warning = {
         type: 'ontime',
         message: '✅ On-time handover on booking start date',
       };
     }
-    else if (handoverDateStr < startDateStr) {
+    else if (handoverDateObj < startDateObj) {
       warning = {
         type: 'early',
         message: '🟡 Early handover before start date',
       };
     }
-    else if (handoverDateStr > startDateStr) {
+    else if (handoverDateObj > startDateObj) {
       warning = {
         type: 'invalid',
         message: '❌ Handover date cannot be after start date',
       };
     }
-
+    
     setHandoverWarning(warning);
   };
+  
+
+
 
   const handleChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));

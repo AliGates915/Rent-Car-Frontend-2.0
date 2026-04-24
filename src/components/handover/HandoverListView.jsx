@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { 
   Edit, Trash2, Gauge, Fuel, User, Car, Tag, 
   Phone, CreditCard, Calendar as CalendarIcon, 
-  Clock, ChevronLeft, ChevronRight, X,  FileText, CheckCircle, Search
+  Clock, ChevronLeft, ChevronRight, X, FileText, CheckCircle, Search
 } from 'lucide-react';
 import DataTable from '../ui/DataTable';
 
@@ -46,10 +46,24 @@ export default function HandoverListView({
     }).format(amount || 0);
   };
 
+  // Helper to get status config
+  const getStatusConfig = (status) => {
+    const configs = {
+      ongoing: { color: 'bg-blue-500', label: 'Ongoing', icon: '🔄' },
+      completed: { color: 'bg-green-500', label: 'Completed', icon: '✅' },
+      cancelled: { color: 'bg-red-500', label: 'Cancelled', icon: '❌' },
+      pending: { color: 'bg-yellow-500', label: 'Pending', icon: '⏳' },
+      confirmed: { color: 'bg-purple-500', label: 'Confirmed', icon: '✓' }
+    };
+    return configs[status?.toLowerCase()] || configs.ongoing;
+  };
+
   const openImageViewer = (images, index) => {
-    setSelectedImage(images);
-    setCurrentImageIndex(index);
-    setImageViewerOpen(true);
+    if (images && images.length > 0) {
+      setSelectedImage(images);
+      setCurrentImageIndex(index);
+      setImageViewerOpen(true);
+    }
   };
 
   const nextImage = () => {
@@ -64,77 +78,20 @@ export default function HandoverListView({
     }
   };
 
-  // Define columns for DataTable fallback
-  const columns = [
-    { key: 'booking_code', label: 'Booking Code' },
-    { 
-      key: 'customer', 
-      label: 'Customer',
-      render: (row) => (
-        <div>
-          <div className="font-medium">{row.customer_name}</div>
-          <div className="text-xs text-slate-500">{row.customer_phone}</div>
-        </div>
-      )
-    },
-    { 
-      key: 'vehicle', 
-      label: 'Vehicle',
-      render: (row) => (
-        <div>
-          <div>{row.car_make} {row.car_model}</div>
-          <div className="text-xs text-slate-500">{row.registration_no}</div>
-        </div>
-      )
-    },
-    { 
-      key: 'handover_datetime', 
-      label: 'Handover Date',
-      render: (row) => formatDate(row.handover_datetime)
-    },
-    { 
-      key: 'km_out', 
-      label: 'Odometer',
-      render: (row) => `${row.km_out?.toLocaleString()} km`
-    },
-    { 
-      key: 'fuel_level_out', 
-      label: 'Fuel'
-    },
-    { 
-      key: 'booking_status', 
-      label: 'Status',
-      render: (row) => {
-        const statusColors = {
-          ongoing: 'bg-blue-100 text-blue-800',
-          completed: 'bg-green-100 text-green-800',
-          cancelled: 'bg-red-100 text-red-800',
-          pending: 'bg-yellow-100 text-yellow-800',
-          confirmed: 'bg-purple-100 text-purple-800'
-        };
-        const color = statusColors[row.booking_status?.toLowerCase()] || 'bg-gray-100 text-gray-800';
-        return (
-          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${color}`}>
-            {row.booking_status || 'N/A'}
-          </span>
-        );
-      }
-    }
-  ];
-
-  // Custom Card View for better visual presentation
+  // Custom Card View component
   const CustomCardView = ({ handover }) => {
     const [showFullDetails, setShowFullDetails] = useState(false);
     
-    const statusConfig = {
-      ongoing: { color: 'bg-blue-500', label: 'Ongoing', icon: '🔄' },
-      completed: { color: 'bg-green-500', label: 'Completed', icon: '✅' },
-      cancelled: { color: 'bg-red-500', label: 'Cancelled', icon: '❌' },
-      pending: { color: 'bg-yellow-500', label: 'Pending', icon: '⏳' },
-      confirmed: { color: 'bg-purple-500', label: 'Confirmed', icon: '✓' }
-    };
-    const config = statusConfig[handover.booking_status?.toLowerCase()] || statusConfig.ongoing;
-
+    // Safely access nested properties
+    const vehicle = handover.vehicle || {};
+    const booking = handover.booking || {};
+    const customer = handover.customer || {};
+    
+    const statusConfig = getStatusConfig(booking.status);
+    
+    // Get vehicle images (if any from the data structure)
+    const vehicleImages = handover.images || [];
+    
     return (
       <div 
         className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-slate-100"
@@ -143,17 +100,17 @@ export default function HandoverListView({
       >
         {/* Image Gallery */}
         <div className="relative h-48 overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900">
-          {handover.images && handover.images.length > 0 ? (
+          {vehicleImages.length > 0 ? (
             <div className="relative h-full">
               <img 
-                src={handover.images[0].url} 
-                alt={`${handover.car_make} ${handover.car_model}`}
+                src={vehicleImages[0].url} 
+                alt={`${vehicle.car_make} ${vehicle.car_model}`}
                 className="w-full h-full object-cover cursor-pointer hover:scale-110 transition-transform duration-500"
-                onClick={() => openImageViewer(handover.images, 0)}
+                onClick={() => openImageViewer(vehicleImages, 0)}
               />
-              {handover.images.length > 1 && (
+              {vehicleImages.length > 1 && (
                 <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
-                  +{handover.images.length} photos
+                  +{vehicleImages.length - 1} more
                 </div>
               )}
             </div>
@@ -164,9 +121,9 @@ export default function HandoverListView({
           )}
           
           {/* Status Badge */}
-          <div className={`absolute top-3 left-3 ${config.color} text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow-lg`}>
-            <span>{config.icon}</span>
-            <span>{config.label}</span>
+          <div className={`absolute top-3 left-3 ${statusConfig.color} text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 shadow-lg`}>
+            <span>{statusConfig.icon}</span>
+            <span>{statusConfig.label}</span>
           </div>
           
           {/* Quick Actions */}
@@ -194,13 +151,13 @@ export default function HandoverListView({
           <div className="flex justify-between items-start mb-3">
             <div>
               <h3 className="font-bold text-slate-900 text-lg">
-                {handover.car_make} {handover.car_model}
+                {vehicle.car_make || 'Unknown'} {vehicle.car_model || 'Vehicle'}
               </h3>
-              <p className="text-xs text-slate-500 font-mono">{handover.registration_no}</p>
+              <p className="text-xs text-slate-500 font-mono">{vehicle.registration_no || 'No Reg'}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-slate-500">Booking ID</p>
-              <p className="text-sm font-mono font-semibold text-slate-700">{handover.booking_code}</p>
+              <p className="text-xs text-slate-500">Booking</p>
+              <p className="text-sm font-mono font-semibold text-slate-700">{booking.code || 'N/A'}</p>
             </div>
           </div>
           
@@ -208,11 +165,11 @@ export default function HandoverListView({
           <div className="mb-3 p-2 bg-slate-50 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
               <User size={14} className="text-slate-400" />
-              <span className="text-sm font-medium text-slate-700">{handover.customer_name}</span>
+              <span className="text-sm font-medium text-slate-700">{customer.name || 'Unknown'}</span>
             </div>
             <div className="flex items-center gap-2">
               <Phone size={12} className="text-slate-400" />
-              <span className="text-xs text-slate-500">{handover.customer_phone}</span>
+              <span className="text-xs text-slate-500">{customer.phone || 'No phone'}</span>
             </div>
           </div>
           
@@ -222,28 +179,28 @@ export default function HandoverListView({
               <CalendarIcon size={14} className="text-blue-500" />
               <div>
                 <p className="text-xs text-slate-500">Handover</p>
-                <p className="text-xs font-medium">{formatDate(handover.handover_datetime)}</p>
+                <p className="text-xs font-medium">{formatDate(handover.handover_date)}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Clock size={14} className="text-green-500" />
               <div>
                 <p className="text-xs text-slate-500">Duration</p>
-                <p className="text-xs font-medium">{handover.total_days} days</p>
+                <p className="text-xs font-medium">{booking.total_days || 0} days</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Gauge size={14} className="text-purple-500" />
               <div>
                 <p className="text-xs text-slate-500">Odometer</p>
-                <p className="text-xs font-medium">{handover.km_out?.toLocaleString()} km</p>
+                <p className="text-xs font-medium">{handover.km_out?.toLocaleString() || 0} km</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <Fuel size={14} className="text-orange-500" />
               <div>
                 <p className="text-xs text-slate-500">Fuel</p>
-                <p className="text-xs font-medium">{handover.fuel_level_out}</p>
+                <p className="text-xs font-medium">{handover.fuel_level_out || 'N/A'}</p>
               </div>
             </div>
           </div>
@@ -252,11 +209,11 @@ export default function HandoverListView({
           <div className="border-t pt-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-slate-600">Total Amount</span>
-              <span className="text-lg font-bold text-slate-900">{formatCurrency(handover.total_amount)}</span>
+              <span className="text-lg font-bold text-slate-900">{formatCurrency(booking.total_amount)}</span>
             </div>
             <div className="flex justify-between items-center text-xs text-slate-500 mt-1">
               <span>Advance Paid</span>
-              <span className="text-green-600">{formatCurrency(handover.advance_amount)}</span>
+              <span className="text-green-600">{formatCurrency(booking.advance_amount)}</span>
             </div>
             {handover.vehicle_out_notes && (
               <div className="mt-2 p-2 bg-yellow-50 rounded text-xs text-yellow-800">
@@ -271,19 +228,27 @@ export default function HandoverListView({
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
                   <span className="text-slate-500">Car Type:</span>
-                  <span className="ml-2 font-medium">{handover.car_type}</span>
+                  <span className="ml-2 font-medium">{vehicle.car_type || 'N/A'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500">Transmission:</span>
-                  <span className="ml-2 font-medium">{handover.transmission_type}</span>
+                  <span className="ml-2 font-medium">{vehicle.transmission_type || 'N/A'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500">Fuel Type:</span>
-                  <span className="ml-2 font-medium">{handover.fuel_type}</span>
+                  <span className="ml-2 font-medium">{vehicle.fuel_type || 'N/A'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500">Rate/Day:</span>
-                  <span className="ml-2 font-medium">{formatCurrency(handover.rate_per_day)}</span>
+                  <span className="ml-2 font-medium">{formatCurrency(vehicle.rate_per_day)}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Handover By:</span>
+                  <span className="ml-2 font-medium">{handover.handed_over_by || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Time:</span>
+                  <span className="ml-2 font-medium">{handover.handover_time || 'N/A'}</span>
                 </div>
               </div>
             </div>
@@ -300,7 +265,6 @@ export default function HandoverListView({
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm" onClick={() => setImageViewerOpen(false)}>
         <div className="relative max-w-5xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
-          {/* Close Button */}
           <button
             onClick={() => setImageViewerOpen(false)}
             className="absolute -top-12 right-0 p-2 text-white hover:text-slate-300 transition"
@@ -308,15 +272,13 @@ export default function HandoverListView({
             <X size={24} />
           </button>
           
-          {/* Image */}
           <div className="relative">
             <img 
               src={selectedImage[currentImageIndex]?.url} 
-              alt={`Car ${currentImageIndex + 1}`}
+              alt={`Vehicle ${currentImageIndex + 1}`}
               className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
             />
             
-            {/* Navigation */}
             {selectedImage.length > 1 && (
               <>
                 <button
@@ -334,13 +296,11 @@ export default function HandoverListView({
               </>
             )}
             
-            {/* Image Counter */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
               {currentImageIndex + 1} / {selectedImage.length}
             </div>
           </div>
           
-          {/* Thumbnails */}
           {selectedImage.length > 1 && (
             <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
               {selectedImage.map((img, idx) => (
@@ -361,113 +321,128 @@ export default function HandoverListView({
     );
   };
 
-  // If we have data, show card view
-  if (handovers && handovers.length > 0) {
-    const totalPages = Math.ceil(total / limit);
-    
-    return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Vehicle Handovers</h1>
-            <p className="text-slate-500 mt-1">Track and manage all vehicle handover records</p>
-          </div>
-          <div className="flex gap-3">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search handovers..."
-                value={search}
-                onChange={(e) => onSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            </div>
-          </div>
+  // Calculate stats from handovers data
+  const totalHandovers = handovers?.length || 0;
+  const activeHandovers = handovers?.filter(h => h.booking?.status === 'ongoing').length || 0;
+  const totalRevenue = handovers?.reduce((sum, h) => sum + (h.booking?.total_amount || 0), 0) || 0;
+  const completedHandovers = handovers?.filter(h => h.booking?.status === 'completed').length || 0;
+  
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Vehicle Handovers</h1>
+          <p className="text-slate-500 mt-1">Track and manage all vehicle handover records</p>
         </div>
-        
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm opacity-90">Total Handovers</p>
-                <p className="text-2xl font-bold mt-1">{total}</p>
-              </div>
-              <Car size={24} className="opacity-80" />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm opacity-90">Active Handovers</p>
-                <p className="text-2xl font-bold mt-1">
-                  {handovers.filter(h => h.booking_status === 'ongoing').length}
-                </p>
-              </div>
-              <CheckCircle size={24} className="opacity-80" />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm opacity-90">Total Revenue</p>
-                <p className="text-2xl font-bold mt-1">
-                  {formatCurrency(handovers.reduce((sum, h) => sum + (h.total_amount || 0), 0))}
-                </p>
-              </div>
-              <CreditCard size={24} className="opacity-80" />
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm opacity-90">Completed</p>
-                <p className="text-2xl font-bold mt-1">
-                  {handovers.filter(h => h.booking_status === 'completed').length}
-                </p>
-              </div>
-              <FileText size={24} className="opacity-80" />
-            </div>
-          </div>
+        <div className="relative w-full sm:w-80">
+          <input
+            type="text"
+            placeholder="Search handovers..."
+            value={search}
+            onChange={(e) => onSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
         </div>
-        
-        {/* Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {handovers.map((handover) => (
-            <CustomCardView key={handover.id} handover={handover} />
-          ))}
-        </div>
-        
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-center gap-2 mt-6">
-            <button
-              onClick={() => onPageChange(page - 1)}
-              disabled={page === 1}
-              className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-slate-50 transition"
-            >
-              Previous
-            </button>
-            <span className="px-4 py-2">
-              Page {page} of {totalPages}
-            </span>
-            <button
-              onClick={() => onPageChange(page + 1)}
-              disabled={page === totalPages}
-              className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-slate-50 transition"
-            >
-              Next
-            </button>
-          </div>
-        )}
-        
-        {/* Image Viewer Modal */}
-        <ImageViewerModal />
       </div>
-    );
-  }
+      
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm opacity-90">Total Handovers</p>
+              <p className="text-2xl font-bold mt-1">{totalHandovers}</p>
+            </div>
+            <Car size={24} className="opacity-80" />
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm opacity-90">Active Handovers</p>
+              <p className="text-2xl font-bold mt-1">{activeHandovers}</p>
+            </div>
+            <CheckCircle size={24} className="opacity-80" />
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm opacity-90">Total Revenue</p>
+              <p className="text-2xl font-bold mt-1">{formatCurrency(totalRevenue)}</p>
+            </div>
+            <CreditCard size={24} className="opacity-80" />
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 text-white">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm opacity-90">Completed</p>
+              <p className="text-2xl font-bold mt-1">{completedHandovers}</p>
+            </div>
+            <FileText size={24} className="opacity-80" />
+          </div>
+        </div>
+      </div>
+      
+      {/* Loading State */}
+      {loading && (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      )}
+      
+      {/* Cards Grid */}
+      {!loading && handovers && handovers.length > 0 && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {handovers.map((handover) => (
+              <CustomCardView key={handover.id} handover={handover} />
+            ))}
+          </div>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-6">
+              <button
+                onClick={() => onPageChange(page - 1)}
+                disabled={page <= 1}
+                className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-slate-50 transition"
+              >
+                Previous
+              </button>
+              <span className="px-4 py-2 text-sm text-slate-600">
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={() => onPageChange(page + 1)}
+                disabled={page >= totalPages}
+                className="px-4 py-2 border rounded-lg disabled:opacity-50 hover:bg-slate-50 transition"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
+      )}
+      
+      {/* Empty State */}
+      {!loading && (!handovers || handovers.length === 0) && (
+        <div className="text-center py-12">
+          <Car className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-slate-900 mb-2">No Handovers Found</h3>
+          <p className="text-slate-500">No vehicle handover records available.</p>
+        </div>
+      )}
+      
+      {/* Image Viewer Modal */}
+      <ImageViewerModal />
+    </div>
+  );
 
   // Fallback to table view if no data or loading
   return (

@@ -34,6 +34,12 @@ export default function BookingListView({
     return new Date(year, month, day).toLocaleDateString();
   };
 
+  // Ensure bookings is always an array
+  const safeBookings = Array.isArray(bookings) ? bookings : [];
+  const safeTotal = total || safeBookings.length;
+  const safePage = page || 1;
+  const safeLimit = limit || 10;
+
   // Define valid status transitions with their display properties
   const getValidTransitions = (currentStatus) => {
     switch(currentStatus?.toLowerCase()) {
@@ -61,37 +67,30 @@ export default function BookingListView({
   };
 
   const handleStatusUpdate = async (bookingId, newStatus) => {
-    const statusString = String(newStatus);
-    
     setUpdatingStatus(bookingId);
-    setShowStatusMenu(null);
     
     try {
-      if (statusString === 'cancelled') {
-        await moduleApi.patch(`/bookings/${bookingId}/cancel`);
-        toast.success('Booking cancelled successfully');
+      if (newStatus === 'cancelled') {
+        await moduleApi.cancelBooking(bookingId);
       } else {
-        await moduleApi.patch(`/bookings/${bookingId}/status`, { status: statusString });
-        toast.success(`Booking ${statusString} successfully`);
+        await moduleApi.updateBookingStatus(bookingId, newStatus);
       }
       
-      // Refresh data first
-      if (refreshData) {
-        await refreshData();
-      }
+      // Show success message
+      toast.success(`Booking ${newStatus === 'cancelled' ? 'cancelled' : newStatus} successfully! Refreshing...`);
       
-      // Then reset to page 1 (if needed)
-      if (onPageChange) {
-        onPageChange(1);
-      }
+      // Reload after 1 second to show success message
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
       
     } catch (error) {
       console.error('Status update error:', error);
       toast.error(error.response?.data?.message || 'Failed to update status');
-    } finally {
       setUpdatingStatus(null);
     }
   };
+  
   // Get color classes for payment status
   const getPaymentStatusColor = (status) => {
     switch(status?.toLowerCase()) {
@@ -132,7 +131,7 @@ export default function BookingListView({
       render: (row) => (
         <div>
           <div className="font-medium text-slate-900">{row.customer_name}</div>
-          <div className="text-xs text-slate-500">{row.customer_phone || row.customer_email}</div>
+          <div className="text-xs text-slate-500">{row.phone_no || row.customer_phone || row.customer_email}</div>
         </div>
       )
     },
@@ -141,7 +140,7 @@ export default function BookingListView({
       label: 'Vehicle',
       render: (row) => (
         <div>
-          <div className="font-medium text-slate-900">{row.vehicle_make} {row.vehicle_model}</div>
+          <div className="font-medium text-slate-900">{row.car_make} {row.car_model}</div>
           <div className="text-xs text-slate-500">{row.registration_no}</div>
         </div>
       )
@@ -162,9 +161,9 @@ export default function BookingListView({
       label: 'Amounts',
       render: (row) => (
         <div className="text-sm">
-          <div>Total: <span className="font-semibold">Rs. {row.total_amount?.toLocaleString()}</span></div>
-          <div className="text-xs text-slate-500">Advance: Rs. {row.advance_amount?.toLocaleString()}</div>
-          <div className="text-xs text-slate-500">Deposit: Rs. {row.security_deposit?.toLocaleString()}</div>
+          <div>Total: <span className="font-semibold">Rs. {(row.total_amount || 0).toLocaleString()}</span></div>
+          <div className="text-xs text-slate-500">Advance: Rs. {(row.advance_amount || 0).toLocaleString()}</div>
+          <div className="text-xs text-slate-500">Deposit: Rs. {(row.security_deposit || 0).toLocaleString()}</div>
         </div>
       )
     },
@@ -244,18 +243,17 @@ export default function BookingListView({
       title="Booking List"
       description="Manage all vehicle bookings, update status, and track payments"
       columns={columns}
-      data={bookings}
+      data={safeBookings}  // Always pass an array
       loading={loading}
       search={search}
       onSearch={onSearch}
       filters={filters}
-      filterValues={filterValues}
       onFilterChange={onFilterChange}
       onEdit={onEdit}
       onDelete={onDelete}
-      page={page}
-      total={total}
-      limit={limit}
+      page={safePage}
+      total={safeTotal}
+      limit={safeLimit}
       onPageChange={onPageChange}
       actions={true} 
     />

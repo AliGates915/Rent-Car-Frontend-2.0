@@ -23,11 +23,12 @@ const RevenueChart = ({ data }) => {
   }
 
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-IN', {
+    return new Intl.NumberFormat('en-PK', {
       style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0
-    }).format(value);
+      currency: 'PKR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value).replace('PKR', 'Rs.');
   };
 
   return (

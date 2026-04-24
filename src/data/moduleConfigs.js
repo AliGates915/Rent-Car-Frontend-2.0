@@ -291,7 +291,6 @@ export const moduleConfigs = {
     tabs: [
       { key: 'list', label: 'List' },
       { key: 'form', label: 'Add Receipt' },
-      { key: 'report', label: 'Report' },
     ],
     fields: [
       { name: 'customer_id', label: 'Customer', type: 'select', required: false, hidden: true },

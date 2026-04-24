@@ -56,7 +56,7 @@ export default function DashboardPage() {
   };
 
   const renderChangeIndicator = (change) => {
-    if (!change) return null;
+    if (!change || change === 'NaN%') return null;
     const isPositive = change.startsWith('+');
     return (
       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
@@ -83,12 +83,12 @@ export default function DashboardPage() {
     <div className="space-y-6 p-6">
       {/* Summary Cards */}
       <div className="grid gap-4 xl:grid-cols-4 md:grid-cols-2">
-        {dashboardData.summaryCards.map((card) => (
-          <div key={card.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+        {dashboardData.summaryCards.map((card, index) => (
+          <div key={`summary-card-${index}`} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
             <p className="text-sm text-slate-500">{card.label}</p>
             <div className="mt-3 flex items-end justify-between gap-3">
               <h3 className="text-3xl font-bold text-slate-900">
-                {card.isCurrency ? formatCurrency(card.value) : card.value.toLocaleString()}
+                {card.isCurrency ? formatCurrency(card.value) : (card.value || 0).toLocaleString()}
               </h3>
               {renderChangeIndicator(card.change)}
             </div>
@@ -98,7 +98,7 @@ export default function DashboardPage() {
 
       {/* Quick Stats */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {dashboardData.quickStats.map((item) => {
+        {dashboardData.quickStats.map((item, index) => {
           const IconMap = {
             Users: Users,
             CarFront: CarFront,
@@ -107,12 +107,12 @@ export default function DashboardPage() {
           };
           const Icon = IconMap[item.icon] || CreditCard;
           return (
-            <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
+            <div key={`quick-stat-${index}`} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-slate-500">{item.label}</p>
                   <h4 className="mt-2 text-2xl font-bold text-slate-900">
-                    {item.isCurrency ? formatCurrency(item.value) : item.value.toLocaleString()}
+                    {item.isCurrency ? formatCurrency(item.value) : (item.value || 0).toLocaleString()}
                   </h4>
                   {item.trend && (
                     <p className={`text-xs mt-1 ${item.trend.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
@@ -130,7 +130,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Revenue Chart */}
-      <RevenueChart data={dashboardData.revenueData} />
+      <RevenueChart data={dashboardData.revenueData.filter(item => item.revenue !== null)} />
 
       {/* Recent Bookings and Payments */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -138,28 +138,35 @@ export default function DashboardPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
           <h3 className="text-lg font-semibold text-slate-900 mb-4">Recent Bookings</h3>
           <div className="space-y-3">
-            {dashboardData.recentBookings.slice(0, 5).map((booking) => (
-              <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-slate-900">{booking.code}</p>
-                  <p className="text-sm text-slate-500">{booking.customer} - {booking.vehicle}</p>
-                  <p className="text-xs text-slate-400">
-                    <Calendar size={12} className="inline mr-1" />
-                    {booking.dateFrom} to {booking.dateTo}
-                  </p>
+            {dashboardData.recentBookings.length > 0 ? (
+              dashboardData.recentBookings.slice(0, 5).map((booking, index) => (
+                <div key={`booking-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium text-slate-900">{booking.code || 'N/A'}</p>
+                    <p className="text-sm text-slate-500">
+                      {booking.customer || 'Unknown'} - {booking.vehicle || 'N/A'}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      <Calendar size={12} className="inline mr-1" />
+                      {booking.dateFrom || 'N/A'} to {booking.dateTo || 'N/A'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-slate-900">{formatCurrency(booking.amount)}</p>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                      booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                      booking.status === 'ongoing' ? 'bg-blue-100 text-blue-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {booking.status || 'unknown'}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold text-slate-900">{formatCurrency(booking.amount)}</p>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    booking.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                    booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-blue-100 text-blue-700'
-                  }`}>
-                    {booking.status}
-                  </span>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-center text-gray-500 py-8">No recent bookings</p>
+            )}
           </div>
         </div>
 
@@ -167,22 +174,26 @@ export default function DashboardPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
           <h3 className="text-lg font-semibold text-slate-900 mb-4">Recent Payments</h3>
           <div className="space-y-3">
-            {dashboardData.recentPayments.slice(0, 5).map((payment) => (
-              <div key={payment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-slate-900">{payment.bookingCode}</p>
-                  <p className="text-sm text-slate-500">{payment.customer}</p>
-                  <p className="text-xs text-slate-400 capitalize">{payment.type} - {payment.method}</p>
+            {dashboardData.recentPayments.length > 0 ? (
+              dashboardData.recentPayments.slice(0, 5).map((payment, index) => (
+                <div key={`payment-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium text-slate-900">{payment.bookingCode || 'N/A'}</p>
+                    <p className="text-sm text-slate-500">{payment.customer || 'Unknown'}</p>
+                    <p className="text-xs text-slate-400 capitalize">{payment.type || 'N/A'} - {payment.method || 'N/A'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-green-600">{formatCurrency(payment.amount)}</p>
+                    <p className="text-xs text-slate-400">
+                      <Clock size={12} className="inline mr-1" />
+                      {payment.date ? new Date(payment.date).toLocaleDateString() : 'N/A'}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold text-green-600">{formatCurrency(payment.amount)}</p>
-                  <p className="text-xs text-slate-400">
-                    <Clock size={12} className="inline mr-1" />
-                    {new Date(payment.date).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-center text-gray-500 py-8">No recent payments</p>
+            )}
           </div>
         </div>
       </div>
@@ -193,23 +204,24 @@ export default function DashboardPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
           <h3 className="text-lg font-semibold text-slate-900 mb-4">Upcoming Bookings (Next 7 Days)</h3>
           <div className="space-y-3">
-            {dashboardData.upcomingBookings.map((booking) => (
-              <div key={booking.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-slate-900">{booking.code}</p>
-                  <p className="text-sm text-slate-600">{booking.customer}</p>
-                  <p className="text-xs text-slate-500">{booking.vehicle}</p>
+            {dashboardData.upcomingBookings.length > 0 ? (
+              dashboardData.upcomingBookings.map((booking, index) => (
+                <div key={`upcoming-${index}`} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                  <div>
+                    <p className="font-medium text-slate-900">{booking.code || 'N/A'}</p>
+                    <p className="text-sm text-slate-600">{booking.customer || 'Unknown'}</p>
+                    <p className="text-xs text-slate-500">{booking.vehicle || 'N/A'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-slate-600">
+                      <Calendar size={12} className="inline mr-1" />
+                      {booking.dateFrom || 'N/A'}
+                    </p>
+                    <p className="font-semibold text-slate-900">{formatCurrency(booking.amount)}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-slate-600">
-                    <Calendar size={12} className="inline mr-1" />
-                    {booking.dateFrom}
-                  </p>
-                  <p className="font-semibold text-slate-900">{formatCurrency(booking.amount)}</p>
-                </div>
-              </div>
-            ))}
-            {dashboardData.upcomingBookings.length === 0 && (
+              ))
+            ) : (
               <p className="text-center text-gray-500 py-8">No upcoming bookings</p>
             )}
           </div>
@@ -219,24 +231,28 @@ export default function DashboardPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
           <h3 className="text-lg font-semibold text-slate-900 mb-4">Top Performing Vehicles</h3>
           <div className="space-y-4">
-            {dashboardData.vehicleUtilization.map((vehicle) => (
-              <div key={vehicle.id}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="font-medium text-slate-700">{vehicle.name}</span>
-                  <span className="text-slate-500">{vehicle.utilizationRate.toFixed(0)}% utilized</span>
+            {dashboardData.vehicleUtilization.length > 0 ? (
+              dashboardData.vehicleUtilization.map((vehicle, index) => (
+                <div key={`vehicle-${index}`}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium text-slate-700">{vehicle.name || `Vehicle ${index + 1}`}</span>
+                    <span className="text-slate-500">{vehicle.utilizationRate?.toFixed(0) || 0}% utilized</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 rounded-full h-2 transition-all duration-500"
+                      style={{ width: `${vehicle.utilizationRate || 0}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-500 mt-1">
+                    <span>{vehicle.totalBookings || 0} total bookings</span>
+                    <span>{vehicle.activeBookings || 0} active</span>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-blue-600 rounded-full h-2 transition-all duration-500"
-                    style={{ width: `${vehicle.utilizationRate}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-slate-500 mt-1">
-                  <span>{vehicle.totalBookings} total bookings</span>
-                  <span>{vehicle.activeBookings} active</span>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-center text-gray-500 py-8">No vehicle data available</p>
+            )}
           </div>
         </div>
       </div>
