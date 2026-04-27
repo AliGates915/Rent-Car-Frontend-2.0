@@ -172,8 +172,6 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
   };
   
 
-
-
   const handleChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
 
@@ -268,7 +266,7 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
         handed_over_by: formData.handed_over_by,
         handover_date: formData.handover_date,
         handover_time: formData.handover_time,
-        km_out: parseFloat(formData.km_out),
+        km_out: formData.km_out === '' ? null : parseInt(formData.km_out),
         fuel_level_out: formData.fuel_level_out,
         vehicle_out_notes: formData.vehicle_out_notes || null,
         customer_signature_url: formData.customer_signature_url || null,

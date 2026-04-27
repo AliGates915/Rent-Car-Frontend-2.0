@@ -1,3 +1,5 @@
+// moduleConfigs.js - Complete fixed version
+
 const yesNoOptions = [
   { label: 'Yes', value: true },
   { label: 'No', value: false },
@@ -41,10 +43,11 @@ export const moduleConfigs = {
       { key: 'list', label: 'List' },
       { key: 'form', label: 'Form' },
       { key: 'documents', label: 'Documents' },
+      { key: 'images', label: 'Images' },
     ],
     fields: [
       { name: 'registration_no', label: 'Registration No', required: true, type: 'text', maxLength: 10 },
-      { name: 'owner_id', label: 'owner_id', type: 'select' },
+      { name: 'owner_id', label: 'Owner', type: 'select' },
       { name: 'car_make', label: 'Make', required: true },
       { name: 'car_model', label: 'Model', required: true, type: 'text', maxLength: 20 },
       { name: 'year_of_model', label: 'Year', type: 'number' },
@@ -59,7 +62,6 @@ export const moduleConfigs = {
       { name: 'sunroof', label: 'Sun Roof', type: 'checkbox' },
       { name: 'front_camera', label: 'Front Camera', type: 'checkbox' },
       { name: 'rear_camera', label: 'Rear Camera', type: 'checkbox' },
-
     ],
     columns: [
       { key: 'registration_no', label: 'Registration' },
@@ -156,7 +158,6 @@ export const moduleConfigs = {
     ]
   },
 
-
   bookings: {
     title: 'Booking Management',
     endpoint: '/bookings',
@@ -195,7 +196,6 @@ export const moduleConfigs = {
     ],
   },
 
-
   return: {
     title: 'Vehicle Return',
     endpoint: '/return',
@@ -224,7 +224,7 @@ export const moduleConfigs = {
       { key: 'balance_amount', label: 'Balance', type: 'currency' },
     ],
     filters: [
-      { key: 'booking_id', label: 'Booking ID', options: [''] }, // Add options array
+      { key: 'booking_id', label: 'Booking ID', options: [''] },
       { key: 'status', label: 'Status', options: ['', 'completed'] }
     ],
   },
@@ -320,7 +320,6 @@ export const moduleConfigs = {
     tabs: [
       { key: 'list', label: 'List' },
       { key: 'form', label: 'Form' },
-      { key: 'report', label: 'Report' },
     ],
     fields: [
       { name: 'expense_date', label: 'Expense Date', type: 'date', required: true },
@@ -338,7 +337,6 @@ export const moduleConfigs = {
       { key: 'payment_method', label: 'Method' },
     ],
   },
-
 
   maintenance: {
     title: 'Vehicle Maintenance',
@@ -376,7 +374,7 @@ export const moduleConfigs = {
       // { key: 'summary', label: 'Summary' },
       // { key: 'due', label: 'Due Payments' },
     ],
-    fields: [], // No form fields as earnings are auto-generated from bookings
+    fields: [],
     columns: [
       { key: 'id', label: 'ID' },
       { key: 'owner_name', label: 'Owner' },
@@ -389,10 +387,10 @@ export const moduleConfigs = {
     ],
   },
 
-
+  // IMPORTANT: FIXED REPORTS CONFIGURATION
   reports: {
     title: 'Reports',
-    endpoint: '/reports/profit-loss',
+    endpoint: '/reports',
     tabs: [
       { key: 'profit-loss', label: 'Profit & Loss' },
       { key: 'daybook', label: 'Daybook' },
@@ -401,64 +399,29 @@ export const moduleConfigs = {
     ],
     fields: [],
     columns: [],
-    reportTypes: {  // Add this property
-      'profit-loss': { endpoint: '/reports/profit-loss', method: 'GET' },
-      'daybook': { endpoint: '/reports/daybook', method: 'GET' },
-      'expense': { endpoint: '/reports/expense', method: 'GET' },
-      'receipt': { endpoint: '/reports/receipt', method: 'GET' },
+    // This reportTypes property is CRITICAL for ReportSection to work
+    reportTypes: {
+      'profit-loss': { 
+        endpoint: '/reports/profit-loss', 
+        method: 'GET' 
+      },
+      'daybook': { 
+        endpoint: '/reports/daybook', 
+        method: 'GET' 
+      },
+      'expense': { 
+        endpoint: '/reports/expense', 
+        method: 'GET' 
+      },
+      'receipt': { 
+        endpoint: '/reports/receipt', 
+        method: 'GET' 
+      },
     },
-  },
-
-  daybook: {
-    title: 'Daybook',
-    endpoint: '/daybook',
-    tabs: [
-      { key: 'list', label: 'List' },
-    ],
-    fields: [],
-    columns: [
-      { key: 'entry_date', label: 'Date', type: 'date' },
-      { key: 'entry_type', label: 'Type' },
-      { key: 'reference', label: 'Reference' },
-      { key: 'debit', label: 'Debit', type: 'currency' },
-      { key: 'credit', label: 'Credit', type: 'currency' },
-      { key: 'balance', label: 'Balance', type: 'currency' },
-    ],
   },
 };
 
-export const defaultReportData = [
-  { name: 'Mon', income: 150000, expense: 50000 },
-  { name: 'Tue', income: 180000, expense: 65000 },
-  { name: 'Wed', income: 110000, expense: 40000 },
-  { name: 'Thu', income: 200000, expense: 80000 },
-  { name: 'Fri', income: 230000, expense: 70000 },
-  { name: 'Sat', income: 175000, expense: 55000 },
-];
-
-export const pieReportData = [
-  { name: 'Cash', value: 48 },
-  { name: 'Bank', value: 22 },
-  { name: 'EasyPaisa', value: 18 },
-  { name: 'JazzCash', value: 12 },
-];
-
-export const timelineSeed = [
-  { title: 'Booking created', description: 'Customer booking record generated with advance details.', date: '2026-04-01 10:30 AM' },
-  { title: 'Payment received', description: 'Advance payment posted in receipt ledger.', date: '2026-04-01 11:00 AM' },
-  { title: 'Vehicle handed over', description: 'Vehicle marked on_rent with odometer captured.', date: '2026-04-02 09:00 AM' },
-  { title: 'Return pending', description: 'Expected return reminder shown for operations team.', date: '2026-04-03 06:00 PM' },
-];
-
-export const dashboardSummaryCards = [
-  { label: 'Total Bookings', value: '1,248', change: '+12.4%' },
-  { label: 'Active Vehicles', value: '86', change: '+4.1%' },
-  { label: 'Today Cash In', value: 'PKR 430K', change: '+8.2%' },
-  { label: 'Pending Returns', value: '11', change: '-2.3%' },
-];
-
-
-// Individual setup type configurations
+// Export individual setup type configurations
 export const setupTypeConfigs = {
   'vehicle-type': {
     title: 'Vehicle Types',
@@ -518,3 +481,33 @@ export const setupTypeConfigs = {
   }
 };
 
+// Export other data
+export const defaultReportData = [
+  { name: 'Mon', income: 150000, expense: 50000 },
+  { name: 'Tue', income: 180000, expense: 65000 },
+  { name: 'Wed', income: 110000, expense: 40000 },
+  { name: 'Thu', income: 200000, expense: 80000 },
+  { name: 'Fri', income: 230000, expense: 70000 },
+  { name: 'Sat', income: 175000, expense: 55000 },
+];
+
+export const pieReportData = [
+  { name: 'Cash', value: 48 },
+  { name: 'Bank', value: 22 },
+  { name: 'EasyPaisa', value: 18 },
+  { name: 'JazzCash', value: 12 },
+];
+
+export const timelineSeed = [
+  { title: 'Booking created', description: 'Customer booking record generated with advance details.', date: '2026-04-01 10:30 AM' },
+  { title: 'Payment received', description: 'Advance payment posted in receipt ledger.', date: '2026-04-01 11:00 AM' },
+  { title: 'Vehicle handed over', description: 'Vehicle marked on_rent with odometer captured.', date: '2026-04-02 09:00 AM' },
+  { title: 'Return pending', description: 'Expected return reminder shown for operations team.', date: '2026-04-03 06:00 PM' },
+];
+
+export const dashboardSummaryCards = [
+  { label: 'Total Bookings', value: '1,248', change: '+12.4%' },
+  { label: 'Active Vehicles', value: '86', change: '+4.1%' },
+  { label: 'Today Cash In', value: 'PKR 430K', change: '+8.2%' },
+  { label: 'Pending Returns', value: '11', change: '-2.3%' },
+];

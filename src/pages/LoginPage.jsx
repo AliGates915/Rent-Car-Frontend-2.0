@@ -24,13 +24,8 @@ export default function LoginPage() {
       localStorage.setItem('user', JSON.stringify(user));
       toast.success('Login successful');
       navigate('/');
-    } catch {
-      if (form.email && form.password) {
-        localStorage.setItem('token', 'demo-admin-token');
-        localStorage.setItem('user', JSON.stringify({ name: 'Demo Admin', role: 'admin', email: form.email }));
-        toast.success('Demo login activated');
-        navigate('/');
-      }
+    } catch(e) {
+       console.log("Error", e);
     } finally {
       setLoading(false);
     }

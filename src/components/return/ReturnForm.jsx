@@ -27,49 +27,67 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
   // Fetch booking details when selected
   const fetchBookingDetails = async (bookingId) => {
     if (!bookingId) return;
-    
+
     try {
       setLoading(true);
       const response = await moduleApi.getOne('/bookings', bookingId);
-      const booking = response.data;
+      const booking = response?.data?.data;
+
+
+      // Debug: Log the booking data
+      // console.log('Booking data:', booking);
+
       setSelectedBooking(booking);
-      
-      // Calculate total paid from booking data
-      const advanceAmount = parseFloat(booking.advance_amount || 0);
-      const paidAmount = parseFloat(booking.paid_amount || 0);
-      const totalPaid = advanceAmount + paidAmount;
-      
-      // Calculate late days
-      const returnDate = formData.return_date ? new Date(formData.return_date) : new Date();
-      const endDate = new Date(booking.date_to);
-      
-      // Normalize dates (remove time)
-      returnDate.setHours(0, 0, 0, 0);
-      endDate.setHours(0, 0, 0, 0);
-      
+
+      // FIX: Use paid_amount from API (now correctly calculated from payments)
+      const totalPaid = parseFloat(booking.paid_amount || 0);
+
+      // FIX: Handle dates properly - convert ISO strings to Date objects
+      const returnDateObj = formData.return_date ? new Date(formData.return_date) : new Date();
+      const endDateObj = new Date(booking.date_to);
+      const startDateObj = new Date(booking.date_from);
+
+      // Debug: Log dates
+      // console.log('Return Date:', returnDateObj);
+      // console.log('End Date:', endDateObj);
+      // console.log('Start Date:', startDateObj);
+
       // Calculate late days only if return date is after end date
       let lateDays = 0;
       let lateCharges = 0;
-      
-      if (returnDate > endDate) {
-        const diffTime = returnDate - endDate;
+
+      if (returnDateObj > endDateObj) {
+        const diffTime = returnDateObj - endDateObj;
         lateDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const dailyRate = parseFloat(booking.rate_per_day || 0);
         lateCharges = lateDays * dailyRate * 1.5; // 50% extra for late return
+        // console.log(`Late return: ${lateDays} days, charges: ${lateCharges}`);
       }
-      
+
       // Get extra and damage charges from form data
       const extraCharges = parseFloat(formData.extra_charges || 0);
       const damageCharges = parseFloat(formData.damage_charges || 0);
-      
+
       // Calculate final amount
       const baseAmount = parseFloat(booking.total_amount || 0);
       const finalAmount = baseAmount + extraCharges + damageCharges + lateCharges;
       const balanceAmount = finalAmount - totalPaid;
-      
+
+      console.log('Calculations:', {
+        baseAmount,
+        totalPaid,
+        extraCharges,
+        damageCharges,
+        lateCharges,
+        finalAmount,
+        balanceAmount
+      });
+
       setCalculations({
         base_amount: baseAmount,
         total_paid: totalPaid,
+        advance_amount: parseFloat(booking.advance_amount || 0),
+        security_deposit: parseFloat(booking.security_deposit || 0),
         extra_charges: extraCharges,
         damage_charges: damageCharges,
         late_days: lateDays,
@@ -77,7 +95,7 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
         final_amount: finalAmount,
         balance_amount: balanceAmount
       });
-      
+
     } catch (error) {
       console.error('Failed to fetch booking details:', error);
       toast.error('Failed to fetch booking details');
@@ -135,36 +153,36 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
 
   const handleChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Recalculate when relevant fields change
     if (name === 'extra_charges' || name === 'damage_charges' || name === 'return_date') {
       setTimeout(() => {
         if (selectedBooking) {
           const extraCharges = name === 'extra_charges' ? parseFloat(value || 0) : parseFloat(formData.extra_charges || 0);
           const damageCharges = name === 'damage_charges' ? parseFloat(value || 0) : parseFloat(formData.damage_charges || 0);
-          
+
           let returnDate = name === 'return_date' ? new Date(value) : new Date(formData.return_date);
           const endDate = new Date(selectedBooking.date_to);
-          
+
           // Normalize dates
           returnDate.setHours(0, 0, 0, 0);
           endDate.setHours(0, 0, 0, 0);
-          
+
           // Calculate late days
           let lateDays = 0;
           let lateCharges = 0;
-          
+
           if (returnDate > endDate) {
             const diffTime = returnDate - endDate;
             lateDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             const dailyRate = parseFloat(selectedBooking.rate_per_day || 0);
             lateCharges = lateDays * dailyRate * 1.5;
           }
-          
+
           const baseAmount = parseFloat(selectedBooking.total_amount || 0);
           const finalAmount = baseAmount + extraCharges + damageCharges + lateCharges;
           const balanceAmount = finalAmount - calculations.total_paid;
-          
+
           setCalculations(prev => ({
             ...prev,
             extra_charges: extraCharges,
@@ -177,14 +195,14 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
         }
       }, 100);
     }
-    
+
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
   const validateForm = () => {
-    const requiredFields = ['booking_id', 'return_date', 'odometer_in', 'fuel_level_in'];
+    const requiredFields = ['booking_id', 'return_date',];
     const newErrors = {};
 
     requiredFields.forEach(field => {
@@ -192,8 +210,6 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
         const labels = {
           booking_id: 'Booking',
           return_date: 'Return Date',
-          odometer_in: 'Odometer Reading',
-          fuel_level_in: 'Fuel Level'
         };
         newErrors[field] = `${labels[field]} is required`;
       }
@@ -214,12 +230,12 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     if (!validateForm()) {
       toast.error('Please fill all required fields');
       return;
     }
-
+  
     // Confirm if there's a balance due
     if (calculations.balance_amount > 0) {
       const confirmMessage = `Balance amount of Rs. ${calculations.balance_amount.toLocaleString()} is due.\n\nDo you want to proceed with return?`;
@@ -227,30 +243,29 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
         return;
       }
     }
-
+  
     setLoading(true);
-
+  
     try {
       const submitData = {
         booking_id: parseInt(formData.booking_id),
         return_date: formData.return_date,
-        odometer_in: parseInt(formData.odometer_in),
-        fuel_level_in: formData.fuel_level_in,
+        odometer_in: formData.odometer_in ? parseInt(formData.odometer_in) : null,
+        fuel_level_in: formData.fuel_level_in || null,
         extra_charges: parseFloat(formData.extra_charges || 0),
         damage_charges: parseFloat(formData.damage_charges || 0),
         damage_notes: formData.damage_notes || null,
         notes: formData.notes || null,
         returned_by: formData.returned_by || null,
-        // Calculate final amount and balance
         total_days: selectedBooking?.total_days,
         late_days: calculations.late_days,
         final_amount: calculations.final_amount,
         balance_amount: calculations.balance_amount > 0 ? calculations.balance_amount : 0,
         paid_amount: calculations.total_paid
       };
-
+  
       console.log('Submitting return data:', submitData);
-
+  
       if (editingRecord) {
         await moduleApi.update('/return', editingRecord.id, submitData);
         toast.success('Return updated successfully');
@@ -258,10 +273,10 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
         await moduleApi.create('/return', submitData);
         toast.success('Vehicle returned successfully');
         
-        // Update booking status to completed
-        await moduleApi.patch(`/bookings/${formData.booking_id}/status`, { status: 'completed' });
+        // REMOVE THIS LINE - The backend already updates booking status
+        // await moduleApi.patch(`/bookings/${formData.booking_id}/status`, { status: 'completed' });
       }
-
+  
       onSuccess();
     } catch (error) {
       console.error('Submit error:', error);
@@ -338,7 +353,6 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
                   min="0"
                 />
               </div>
-              {errors.odometer_in && <p className="text-xs text-red-500">{errors.odometer_in}</p>}
             </div>
 
             {/* Fuel Level In */}
@@ -361,7 +375,7 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
                   <option value="Empty">Empty</option>
                 </select>
               </div>
-              {errors.fuel_level_in && <p className="text-xs text-red-500">{errors.fuel_level_in}</p>}
+        
             </div>
 
             {/* Extra Charges */}
@@ -457,20 +471,23 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="text-blue-700">Customer:</span>
-                    <div className="font-semibold text-blue-900">{selectedBooking.customer_name}</div>
+                    <div className="font-semibold text-blue-900">{selectedBooking.customer_name || 'N/A'}</div>
                   </div>
                   <div>
                     <span className="text-blue-700">Vehicle:</span>
-                    <div className="font-semibold text-blue-900">{selectedBooking.car_make} {selectedBooking.car_model}</div>
+                    <div className="font-semibold text-blue-900">
+                      {selectedBooking.car_make || ''} {selectedBooking.car_model || ''}
+                    </div>
                   </div>
                   <div>
                     <span className="text-blue-700">Registration:</span>
-                    <div className="font-semibold text-blue-900">{selectedBooking.registration_no}</div>
+                    <div className="font-semibold text-blue-900">{selectedBooking.registration_no || 'N/A'}</div>
                   </div>
                   <div>
                     <span className="text-blue-700">Booking Period:</span>
                     <div className="font-semibold text-blue-900">
-                      {new Date(selectedBooking.date_from).toLocaleDateString()} - {new Date(selectedBooking.date_to).toLocaleDateString()}
+                      {selectedBooking.date_from ? new Date(selectedBooking.date_from).toLocaleDateString() : 'Invalid Date'} - {' '}
+                      {selectedBooking.date_to ? new Date(selectedBooking.date_to).toLocaleDateString() : 'Invalid Date'}
                     </div>
                   </div>
                 </div>
@@ -479,7 +496,7 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
               {/* Payment Summary */}
               <div className="p-4 bg-green-50 rounded-xl border border-green-100">
                 <h3 className="text-sm font-semibold text-green-900 mb-3">Payment Summary</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="text-green-700">Base Amount:</span>
                     <div className="font-semibold text-green-900">Rs. {calculations.base_amount.toLocaleString()}</div>
@@ -489,8 +506,14 @@ export default function ReturnForm({ config, editingRecord, onSuccess, onCancelE
                     <div className="font-semibold text-green-900">Rs. {parseFloat(selectedBooking.advance_amount || 0).toLocaleString()}</div>
                   </div>
                   <div>
+                    <span className="text-green-700">Remaining:</span>
+                    <div className="font-semibold text-orange-600">
+                      Rs. {(calculations.base_amount - parseFloat(selectedBooking.advance_amount || 0)).toLocaleString()}
+                    </div>
+                  </div>
+                  <div>
                     <span className="text-green-700">Security Paid:</span>
-                    <div className="font-semibold text-green-900">Rs. {parseFloat(selectedBooking.paid_amount || 0).toLocaleString()}</div>
+                    <div className="font-semibold text-green-900">Rs. {parseFloat(selectedBooking.security_deposit || 0).toLocaleString()}</div>
                   </div>
                   <div>
                     <span className="text-green-700">Total Paid:</span>

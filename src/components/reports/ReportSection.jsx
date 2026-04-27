@@ -1,4 +1,3 @@
-// components/ReportSection.jsx - COMPLETE FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { Calendar, Download, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
@@ -11,7 +10,7 @@ export default function ReportSection({ config, reportType }) {
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState(null);
   const [dateRange, setDateRange] = useState({
-    startDate: new Date(new Date().setDate(1)),
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First day of current month
     endDate: new Date(),
   });
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -48,20 +47,42 @@ export default function ReportSection({ config, reportType }) {
       if (reportType === 'daybook') {
         params = { date: format(selectedDate, 'yyyy-MM-dd') };
       } else {
+        // Make sure dates are formatted correctly
+        const fromDate = format(dateRange.startDate, 'yyyy-MM-dd');
+        const toDate = format(dateRange.endDate, 'yyyy-MM-dd');
+        
         params = {
-          from: format(dateRange.startDate, 'yyyy-MM-dd'),
-          to: format(dateRange.endDate, 'yyyy-MM-dd')
+          from: fromDate,
+          to: toDate
         };
       }
   
       console.log('Fetching report with params:', params);
-      // IMPORTANT: Use direct api.get, not moduleApi.getAll
+      console.log('Endpoint:', reportConfig.endpoint);
+      
+      // Use api.get directly
       const response = await api.get(reportConfig.endpoint, { params });
       console.log('Report data received:', response.data);
-      setReportData(response.data);
+      
+      // Check if response has error
+      if (response.data && response.data.error) {
+        toast.error(response.data.error);
+        setReportData(null);
+      } else {
+        setReportData(response.data);
+      }
     } catch (error) {
       console.error('Error fetching report:', error);
-      toast.error(error.response?.data?.message || 'Failed to fetch report');
+      console.error('Error response:', error.response);
+      
+      // Show specific error message
+      if (error.response?.status === 400) {
+        toast.error(error.response.data?.message || 'Invalid date range or parameters');
+      } else if (error.response?.status === 401) {
+        toast.error('Please login again');
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to fetch report');
+      }
       setReportData(null);
     } finally {
       setLoading(false);
@@ -199,63 +220,85 @@ export default function ReportSection({ config, reportType }) {
   );
 }
 
-// Fixed ProfitLossReport component
+// Updated ProfitLossReport component
 function ProfitLossReport({ data }) {
-  const { total_income, total_expense, net_profit, breakdown } = data;
-  // console.log(data);
+  // Handle different data structures
+  const summary = data?.summary || data;
+  const breakdown = data?.breakdown || {};
+  
+  const total_income = summary?.total_income || 0;
+  const total_expense = summary?.total_expense || 0;
+  const net_profit = summary?.net_profit || 0;
+  const profit_margin = summary?.profit_margin || 0;
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-green-50 rounded-lg p-4 border border-green-200">
           <p className="text-sm text-green-600 font-medium">Total Income</p>
-          <p className="text-2xl font-bold text-green-700">Rs.{total_income?.toLocaleString() || 0}</p>
+          <p className="text-2xl font-bold text-green-700">Rs.{Number(total_income).toLocaleString()}</p>
         </div>
         <div className="bg-red-50 rounded-lg p-4 border border-red-200">
           <p className="text-sm text-red-600 font-medium">Total Expenses</p>
-          <p className="text-2xl font-bold text-red-700">Rs.{total_expense?.toLocaleString() || 0}</p>
+          <p className="text-2xl font-bold text-red-700">Rs.{Number(total_expense).toLocaleString()}</p>
         </div>
         <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
           <p className="text-sm text-blue-600 font-medium">Net Profit/Loss</p>
-          <p className={`text-2xl font-bold ${net_profit >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
-            Rs.{net_profit?.toLocaleString() || 0}
+          <p className={`text-2xl font-bold ${Number(net_profit) >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
+            Rs.{Number(net_profit).toLocaleString()}
           </p>
+          {profit_margin > 0 && (
+            <p className="text-xs text-gray-500 mt-1">Margin: {profit_margin}%</p>
+          )}
         </div>
       </div>
 
-      {breakdown && (
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Income Breakdown</h3>
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr><th className="px-4 py-2 text-left">Category</th><th className="px-4 py-2 text-right">Amount</th></tr>
-              </thead>
-              <tbody>
-                <tr className="border-t"><td className="px-4 py-2">Payments</td><td className="px-4 py-2 text-right">Rs.{total_income || 0}</td></tr>
-                <tr className="border-t"><td className="px-4 py-2">Receipts</td><td className="px-4 py-2 text-right">Rs.{breakdown?.receipts?.toLocaleString() || 0}</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Expense Breakdown</h3>
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr><th className="px-4 py-2 text-left">Category</th><th className="px-4 py-2 text-right">Amount</th></tr>
-              </thead>
-              <tbody>
-                <tr className="border-t"><td className="px-4 py-2">Expenses</td><td className="px-4 py-2 text-right">Rs.{breakdown?.expenses?.toLocaleString() || 0}</td></tr>
-                <tr className="border-t"><td className="px-4 py-2">Maintenance</td><td className="px-4 py-2 text-right">Rs.{breakdown?.maintenance?.toLocaleString() || 0}</td></tr>
-                <tr className="border-t"><td className="px-4 py-2">Owner Payout</td><td className="px-4 py-2 text-right">Rs.{breakdown?.owner_payout?.toLocaleString() || 0}</td></tr>
-              </tbody>
-            </table>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Income Breakdown */}
+        <div>
+          <h3 className="text-lg font-semibold mb-3">Income Breakdown</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between p-2 bg-gray-50 rounded">
+              <span>Advance Payments</span>
+              <span className="font-medium">Rs.{Number(breakdown.advance_payments || 0).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between p-2 bg-gray-50 rounded">
+              <span>Regular Payments</span>
+              <span className="font-medium">Rs.{Number(breakdown.regular_payments || 0).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between p-2 bg-green-100 rounded font-semibold">
+              <span>Total Income</span>
+              <span>Rs.{Number(total_income).toLocaleString()}</span>
+            </div>
           </div>
         </div>
-      )}
+
+        {/* Expense Breakdown */}
+        <div>
+          <h3 className="text-lg font-semibold mb-3">Expense Breakdown</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between p-2 bg-gray-50 rounded">
+              <span>General Expenses</span>
+              <span className="font-medium">Rs.{Number(breakdown.expenses || 0).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between p-2 bg-gray-50 rounded">
+              <span>Maintenance</span>
+              <span className="font-medium">Rs.{Number(breakdown.maintenance || 0).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between p-2 bg-gray-50 rounded">
+              <span>Owner Payout</span>
+              <span className="font-medium">Rs.{Number(breakdown.owner_payout || 0).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between p-2 bg-red-100 rounded font-semibold">
+              <span>Total Expenses</span>
+              <span>Rs.{Number(total_expense).toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
-
 // Fixed DaybookReport component - handles data.entries correctly
 function DaybookReport({ data }) {
   // Handle both possible data structures
