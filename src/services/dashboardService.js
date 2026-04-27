@@ -4,7 +4,7 @@ export const dashboardService = {
   // Get dashboard statistics
   getStats: async () => {
     try {
-      const response = await api.get('/dashboard/stats');
+      const response = await api.get('/api/dashboard/stats');
       return response.data;
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -15,7 +15,7 @@ export const dashboardService = {
   // Get revenue chart data
   getRevenueChart: async (period = 30) => {
     try {
-      const response = await api.get('/dashboard/revenue-chart', {
+      const response = await api.get('/api/dashboard/revenue-chart', {
         params: { period }
       });
       return response.data;
@@ -28,7 +28,7 @@ export const dashboardService = {
   // Get timeline events
   getTimelineEvents: async (limit = 20) => {
     try {
-      const response = await api.get('/dashboard/timeline', {
+      const response = await api.get('/api/dashboard/timeline', {
         params: { limit }
       });
       return response.data;
