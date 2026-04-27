@@ -41,7 +41,7 @@ export default api;
 
 // Auth API
 export const authApi = {
-  login: (payload) => api.post('/api/auth/login', payload),
+  login: (payload) => api.post('/auth/login', payload),
 };
 
 // Module API
