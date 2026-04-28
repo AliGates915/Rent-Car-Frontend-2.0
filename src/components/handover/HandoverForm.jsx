@@ -68,8 +68,6 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
       km_out: '',
       fuel_level_out: '',
       vehicle_out_notes: '',
-      customer_signature_url: '',
-      staff_signature_url: ''
     };
 
     if (editingRecord) {
@@ -269,8 +267,6 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
         km_out: formData.km_out === '' ? null : parseInt(formData.km_out),
         fuel_level_out: formData.fuel_level_out,
         vehicle_out_notes: formData.vehicle_out_notes || null,
-        customer_signature_url: formData.customer_signature_url || null,
-        staff_signature_url: formData.staff_signature_url || null,
         accessories: accessoriesData
       };
 
@@ -536,40 +532,6 @@ export default function HandoverForm({ config, editingRecord, onSuccess, onCance
               </div>
             </div>
           )}
-
-          {/* Signatures Section */}
-          <div className="mt-8 pt-6 border-t border-slate-200">
-            <h3 className="text-md font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <Signature size={18} />
-              Signatures
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Customer Signature URL
-                </label>
-                <input
-                  type="text"
-                  value={formData.customer_signature_url || ''}
-                  onChange={(e) => handleChange('customer_signature_url', e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
-                  placeholder="https://..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Staff Signature URL
-                </label>
-                <input
-                  type="text"
-                  value={formData.staff_signature_url || ''}
-                  onChange={(e) => handleChange('staff_signature_url', e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-primary-500"
-                  placeholder="https://..."
-                />
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Form Actions */}

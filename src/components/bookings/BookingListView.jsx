@@ -70,23 +70,45 @@ export default function BookingListView({
     setUpdatingStatus(bookingId);
     
     try {
+      let response;
       if (newStatus === 'cancelled') {
-        await moduleApi.cancelBooking(bookingId);
+        response = await moduleApi.cancelBooking(bookingId);
+        console.log('Cancel response:', response.data); // Debug log
       } else {
-        await moduleApi.updateBookingStatus(bookingId, newStatus);
+        response = await moduleApi.updateBookingStatus(bookingId, newStatus);
+        console.log('Status update response:', response.data); // Debug log
       }
       
-      // Show success message
-      toast.success(`Booking ${newStatus === 'cancelled' ? 'cancelled' : newStatus} successfully! Refreshing...`);
-      
-      // Reload after 1 second to show success message
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      // Check if response indicates success
+      if (response.data.success) {
+        toast.success(response.data.message || `Booking ${newStatus === 'cancelled' ? 'cancelled' : newStatus} successfully!`);
+        
+        // Reload after 1 second to show success message
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        toast.error(response.data.message || 'Failed to update status');
+        setUpdatingStatus(null);
+      }
       
     } catch (error) {
-      console.error('Status update error:', error);
-      toast.error(error.response?.data?.message || 'Failed to update status');
+      console.error('Status update error details:', error);
+      console.error('Error response:', error.response);
+      console.error('Error request:', error.request);
+      
+      // More specific error messages
+      if (error.code === 'ERR_NETWORK') {
+        toast.error('Network error: Cannot connect to server');
+      } else if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+      } else if (error.response?.status === 403) {
+        toast.error('You do not have permission to perform this action');
+      } else if (error.response?.status === 404) {
+        toast.error('Booking not found');
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to update status');
+      }
       setUpdatingStatus(null);
     }
   };
