@@ -32,21 +32,42 @@ export default function OwnerDocumentList({ ownerId, onDocumentUpdated }) {
   };
 
   // Transform API response (array) to match the expected document structure
-  const transformDocuments = (apiData) => {
-    if (!apiData || !Array.isArray(apiData)) return [];
+// Transform API response (array) to match the expected document structure
+const transformDocuments = (apiData) => {
+  if (!apiData || !Array.isArray(apiData)) return [];
+  
+  return apiData.map(doc => {
+    // Handle extracted_data safely
+    let extractedText = null;
+    if (doc.extracted_data) {
+      try {
+        // If extracted_data is already a string, parse it
+        const parsed = typeof doc.extracted_data === 'string' 
+          ? JSON.parse(doc.extracted_data) 
+          : doc.extracted_data;
+        
+        // Only stringify if it's not empty
+        extractedText = Object.keys(parsed).length > 0 
+          ? JSON.stringify(parsed, null, 2) 
+          : null;
+      } catch (e) {
+        console.error('Error parsing extracted_data:', e);
+        extractedText = null;
+      }
+    }
     
-    return apiData.map(doc => ({
+    return {
       id: doc.id,
       document_type: doc.document_type,
       file_url: doc.file_url,
       is_verified: doc.is_verified === 1,
       rejection_reason: doc.rejection_reason,
-      extracted_text: doc.extracted_data ? JSON.stringify(JSON.parse(doc.extracted_data), null, 2) : null,
+      extracted_text: extractedText,
       created_at: doc.created_at,
       updated_at: doc.updated_at
-    }));
-  };
-
+    };
+  });
+};
   const documents = transformDocuments(data);
 
   const handleReupload = async (document, file) => {

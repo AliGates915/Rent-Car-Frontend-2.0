@@ -314,29 +314,28 @@ export const moduleConfigs = {
     ]
   },
 
-  expenses: {
-    title: 'Expenses',
-    endpoint: '/expenses',
-    tabs: [
-      { key: 'list', label: 'List' },
-      { key: 'form', label: 'Form' },
-    ],
-    fields: [
-      { name: 'expense_date', label: 'Expense Date', type: 'date', required: true },
-      { name: 'expense_head', label: 'Expense Head', required: true },
-      { name: 'vendor_name', label: 'Vendor Name' },
-      { name: 'amount', label: 'Amount', type: 'number', required: true },
-      { name: 'payment_method', label: 'Payment Method', type: 'select', options: ['cash', 'bank', 'easypaisa', 'jazzcash'] },
-      { name: 'notes', label: 'Notes', type: 'textarea' },
-    ],
-    columns: [
-      { key: 'expense_date', label: 'Date', type: 'date' },
-      { key: 'expense_head', label: 'Head' },
-      { key: 'vendor_name', label: 'Vendor' },
-      { key: 'amount', label: 'Amount', type: 'currency' },
-      { key: 'payment_method', label: 'Method' },
-    ],
-  },
+expenses: {
+  title: 'Expenses',
+  endpoint: '/expenses',
+  tabs: [
+    { key: 'list', label: 'List' },
+    { key: 'form', label: 'Form' },
+    { key: 'report', label: 'Reports' },
+  ],
+  fields: [
+    { name: 'expense_date', label: 'Expense Date', type: 'date', required: true },
+    { name: 'expense_type', label: 'Expense Type', required: true },
+    { name: 'vendor_name', label: 'Vendor Name' },
+    { name: 'amount', label: 'Amount', type: 'number', required: true },
+    { name: 'notes', label: 'Notes', type: 'textarea' },
+  ],
+  columns: [
+    { key: 'created_at', label: 'Date', type: 'date' },
+    { key: 'expense_type', label: 'Expense Type' },
+    { key: 'vendor_name', label: 'Vendor' },
+    { key: 'amount', label: 'Amount', type: 'currency' },
+  ],
+},
 
   maintenance: {
     title: 'Vehicle Maintenance',

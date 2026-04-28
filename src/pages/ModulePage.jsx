@@ -34,6 +34,8 @@ import CashReceiptsListView from '../components/cash-receipts/CashReceiptsListVi
 import CashReceiptsReport from '../components/cash-receipts/CashReceiptsReport';
 import ReportsPage from './ReportsPage';
 import DaybookReport from '../components/reports/DaybookReport';
+import ExpenseVoucherList from '../components/Expense/ExpenseVoucherList';
+import MaintenanceList from '../components/Maintenance/MaintenanceList';
 
 function buildFilters(config, filterValues) {
   if (!config?.filters || !Array.isArray(config.filters)) {
@@ -437,7 +439,8 @@ function RegularModulePage({ moduleKey, config }) {
             actions={false}
           />
         );
-
+      case  'maintenance':
+        return <MaintenanceList />
       case 'calendar':
         if (moduleKey === 'bookings') {
           return <BookingCalendar />;
@@ -458,6 +461,7 @@ function RegularModulePage({ moduleKey, config }) {
 
       case 'profit-loss':
       case 'expense':
+        return <ExpenseVoucherList/>
       case 'receipt':
         return <ReportSection config={config} reportType={activeTab} />;
         case 'daybook':
