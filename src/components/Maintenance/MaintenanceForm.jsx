@@ -32,36 +32,36 @@ export default function MaintenanceForm({ maintenance, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [fetchingVehicles, setFetchingVehicles] = useState(true);
 
-  useEffect(() => {
-    // Fetch vehicles
-    const fetchVehicles = async () => {
-      try {
-        const data = await vehicleApi.getAll();
-        console.log("Data ",data);
+  // useEffect(() => {
+  //   // Fetch vehicles
+  //   const fetchVehicles = async () => {
+  //     try {
+  //       const data = await vehicleApi.getAll();
+  //       console.log("Data ",data);
         
-        setVehicles(data.filter(v => v.status !== 'deleted'));
-      } catch (error) {
-        console.error('Error fetching vehicles:', error);
-        toast.error('Failed to load vehicles');
-      } finally {
-        setFetchingVehicles(false);
-      }
-    };
-    fetchVehicles();
+  //       setVehicles(data.filter(v => v.status !== 'deleted'));
+  //     } catch (error) {
+  //       console.error('Error fetching vehicles:', error);
+  //       toast.error('Failed to load vehicles');
+  //     } finally {
+  //       setFetchingVehicles(false);
+  //     }
+  //   };
+  //   fetchVehicles();
 
-    if (maintenance) {
-      setFormData({
-        vehicle_id: maintenance.vehicle_id || '',
-        maintenance_type_id: maintenance.maintenance_type_id || '',
-        service_date: maintenance.service_date?.split('T')[0] || new Date().toISOString().split('T')[0],
-        odometer_km: maintenance.odometer_km || '',
-        amount: maintenance.amount || '',
-        vendor_name: maintenance.vendor_name || '',
-        notes: maintenance.notes || '',
-        status: maintenance.status || 'pending'
-      });
-    }
-  }, [maintenance]);
+  //   if (maintenance) {
+  //     setFormData({
+  //       vehicle_id: maintenance.vehicle_id || '',
+  //       maintenance_type_id: maintenance.maintenance_type_id || '',
+  //       service_date: maintenance.service_date?.split('T')[0] || new Date().toISOString().split('T')[0],
+  //       odometer_km: maintenance.odometer_km || '',
+  //       amount: maintenance.amount || '',
+  //       vendor_name: maintenance.vendor_name || '',
+  //       notes: maintenance.notes || '',
+  //       status: maintenance.status || 'pending'
+  //     });
+  //   }
+  // }, [maintenance]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
